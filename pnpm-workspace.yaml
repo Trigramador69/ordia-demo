@@ -1,0 +1,9 @@
+# Proyecto independiente: este archivo evita que pnpm tome como raíz el
+# pnpm-workspace.yaml de la carpeta de usuario.
+packages:
+  - "."
+
+# unrs-resolver (de eslint-config-next) trae sus binarios como dependencias
+# opcionales; su script de instalación no hace falta.
+allowBuilds:
+  unrs-resolver: false
