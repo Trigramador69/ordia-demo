@@ -2,6 +2,7 @@ import { etapasAbiertas } from "@/datos/catalogos";
 import { personaPorRol } from "@/datos/equipo";
 import { mesDeFecha } from "@/datos/fechas";
 import type { Cliente, EstadoDemo, FilaPlanilla, Oportunidad, PlanillaCerrada, Seguimiento } from "@/datos/tipos";
+import { alarmasAutomaticas } from "@/lib/crm";
 import { calcularPlanillaDelMes, totalesPlanilla } from "@/lib/planilla";
 
 // Consultas derivadas del estado de la demo. Son funciones puras: las pantallas
@@ -100,4 +101,34 @@ export function mesesConPlanilla(estado: EstadoDemo, hoy: string) {
 
 export function asientoPorId(estado: EstadoDemo, idAsiento: string) {
   return estado.asientos.find((asiento) => asiento.id === idAsiento);
+}
+
+// --- CRM: alarmas y fichas ---
+
+// Alarmas automáticas que ve el rol actual (Ventas, solo las suyas).
+export function alarmasVisibles(estado: EstadoDemo, hoy: string) {
+  const idVendedor = idVendedorDelRol(estado);
+  return alarmasAutomaticas(estado, hoy).filter((alarma) => !idVendedor || alarma.idResponsable === idVendedor);
+}
+
+// Lo que avisa la campana: seguimientos vencidos y de hoy, más las alarmas automáticas.
+export function avisosPendientes(estado: EstadoDemo, hoy: string) {
+  const seguimientos = seguimientosPendientes(estado).filter((seguimiento) => seguimiento.fecha <= hoy);
+  const alarmas = alarmasVisibles(estado, hoy);
+  return { seguimientos, alarmas, total: seguimientos.length + alarmas.length };
+}
+
+export function contactoPrincipal(estado: EstadoDemo, idCliente: string) {
+  const contactos = estado.contactos.filter((contacto) => contacto.idCliente === idCliente);
+  return contactos.find((contacto) => contacto.principal) ?? contactos[0];
+}
+
+export function oportunidadPorId(estado: EstadoDemo, idOportunidad: string) {
+  return estado.oportunidades.find((oportunidad) => oportunidad.id === idOportunidad);
+}
+
+// Ventas solo abre las fichas de sus propios clientes.
+export function puedeVerCliente(estado: EstadoDemo, cliente: Cliente) {
+  const idVendedor = idVendedorDelRol(estado);
+  return !idVendedor || cliente.idVendedor === idVendedor;
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PackageX, ShieldAlert } from "lucide-react";
+import { CampanaAvisos } from "@/components/crm/campana-avisos";
 import { BarraLateral } from "@/components/panel/barra-lateral";
 import { SelectorRol, cambiarRol } from "@/components/panel/selector-rol";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,8 @@ export function MarcoPanel({ children }: { children: React.ReactNode }) {
           <SidebarTrigger className="-ml-1" />
           <span aria-hidden="true" className="mr-1 h-4 w-px bg-border" />
           <span className="truncate text-sm font-medium">{seccion?.titulo ?? "Ordia"}</span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <CampanaAvisos />
             <SelectorRol />
           </div>
         </header>

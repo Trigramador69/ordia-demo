@@ -23,6 +23,7 @@ Abre en http://localhost:3000.
 | `src/datos/` (resto) | Catálogos, feriados y generadores de los datos de ejemplo |
 | `src/lib/contabilidad.ts` | Modelo de asiento: validación, numeración, saldos y asientos automáticos |
 | `src/lib/vacaciones.ts` | Vacaciones por antigüedad, saldos de días libres y permisos |
+| `src/lib/crm.ts` | Alarmas automáticas del CRM, última actividad y grupos de seguimientos |
 | `src/lib/planilla.ts` | Cálculo de la planilla: bono de antigüedad, aportes, RC-IVA, aportes patronales, provisiones y su asiento |
 | `src/lib/pdf.ts`, `src/lib/boleta-pdf.ts` | Generador de PDF de una página (funciona en el navegador y en Node) y la boleta de pago |
 | `src/lib/demo/almacen.ts` | Estado de la demo en `localStorage`, sincronizado entre pestañas |

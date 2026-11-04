@@ -1,7 +1,17 @@
 "use client";
 
+import { nombresEtapa, probabilidadPorEtapa } from "@/datos/catalogos";
 import { contarDiasHabiles } from "@/datos/feriados";
-import type { MovimientoDiaLibre, Permiso, PlanillaCerrada, SolicitudVacacion } from "@/datos/tipos";
+import type {
+  Actividad,
+  EtapaOportunidad,
+  MovimientoDiaLibre,
+  Oportunidad,
+  Permiso,
+  PlanillaCerrada,
+  Seguimiento,
+  SolicitudVacacion,
+} from "@/datos/tipos";
 import { crearAsiento } from "@/lib/contabilidad";
 import { actualizarEstado, obtenerEstado } from "@/lib/demo/almacen";
 import { borradorAsientoPlanilla, calcularPlanillaDelMes, idPlanillaDelMes } from "@/lib/planilla";
@@ -115,4 +125,131 @@ export function cerrarPlanilla(mes: string, idCerradoPor: string) {
       asientos: estado.asientos.filter((item) => item.id !== asiento.id),
     }));
   return { asiento, deshacer };
+}
+
+// --- CRM ---
+
+// Registra una llamada, reunión, correo o nota. Si viene de un seguimiento, lo
+// marca como realizado; si se pide, agenda el próximo. Así se trabaja una alarma
+// sin salir de ella.
+export function registrarActividad(
+  datos: Omit<Actividad, "id">,
+  opciones: { idSeguimientoRealizado?: string; proximoSeguimiento?: { fecha: string; motivo: string } } = {},
+) {
+  const actividad: Actividad = { ...datos, id: crearId("act") };
+  const proximo: Seguimiento | null = opciones.proximoSeguimiento
+    ? {
+        id: crearId("seg"),
+        idCliente: datos.idCliente,
+        idOportunidad: datos.idOportunidad,
+        fecha: opciones.proximoSeguimiento.fecha,
+        motivo: opciones.proximoSeguimiento.motivo,
+        idResponsable: datos.idAutor,
+        estado: "pendiente",
+        fechaRealizado: null,
+        idActividad: null,
+      }
+    : null;
+  actualizarEstado((estado) => ({
+    ...estado,
+    actividades: [actividad, ...estado.actividades],
+    seguimientos: [
+      ...estado.seguimientos.map((seguimiento) =>
+        seguimiento.id === opciones.idSeguimientoRealizado
+          ? { ...seguimiento, estado: "realizado" as const, fechaRealizado: datos.fecha, idActividad: actividad.id }
+          : seguimiento,
+      ),
+      ...(proximo ? [proximo] : []),
+    ],
+  }));
+  return actividad;
+}
+
+export function agendarSeguimiento(datos: Omit<Seguimiento, "id" | "estado" | "fechaRealizado" | "idActividad">) {
+  const seguimiento: Seguimiento = { ...datos, id: crearId("seg"), estado: "pendiente", fechaRealizado: null, idActividad: null };
+  actualizarEstado((estado) => ({ ...estado, seguimientos: [...estado.seguimientos, seguimiento] }));
+  return seguimiento;
+}
+
+// Mueve una oportunidad de etapa. Deja una nota en su historial de actividad,
+// cierra la oportunidad si es ganada o perdida, y pasa a activo a un prospecto
+// que gana. Devuelve una función que deja todo como estaba.
+export function moverOportunidad(idOportunidad: string, etapa: EtapaOportunidad, idAutor: string, motivoPerdida?: string) {
+  const anterior = obtenerEstado();
+  const oportunidad = anterior.oportunidades.find((item) => item.id === idOportunidad);
+  if (!oportunidad || oportunidad.etapa === etapa) return () => {};
+  const hoy = fechaDeHoy();
+  const cerrada = etapa === "ganada" || etapa === "perdida";
+  const nota: Actividad = {
+    id: crearId("act"),
+    idCliente: oportunidad.idCliente,
+    idOportunidad,
+    tipo: "nota",
+    fecha: hoy,
+    descripcion:
+      etapa === "perdida"
+        ? `Oportunidad perdida: ${(motivoPerdida ?? "sin motivo").toLowerCase()}.`
+        : etapa === "ganada"
+          ? `Oportunidad ganada por Bs ${oportunidad.monto.toLocaleString("es-BO")}.`
+          : `Pasó de ${nombresEtapa[oportunidad.etapa].toLowerCase()} a ${nombresEtapa[etapa].toLowerCase()}.`,
+    idAutor,
+  };
+  actualizarEstado((estado) => ({
+    ...estado,
+    oportunidades: estado.oportunidades.map((item) =>
+      item.id === idOportunidad
+        ? {
+            ...item,
+            etapa,
+            probabilidad: probabilidadPorEtapa[etapa],
+            fechaCierre: cerrada ? hoy : null,
+            motivoPerdida: etapa === "perdida" ? (motivoPerdida ?? null) : null,
+            historialEtapas: [...item.historialEtapas, { etapa, fecha: hoy }],
+          }
+        : item,
+    ),
+    actividades: [nota, ...estado.actividades],
+    clientes:
+      etapa === "ganada"
+        ? estado.clientes.map((cliente) =>
+            cliente.id === oportunidad.idCliente && cliente.estado !== "activo" ? { ...cliente, estado: "activo" as const } : cliente,
+          )
+        : estado.clientes,
+  }));
+  return () =>
+    actualizarEstado((estado) => ({
+      ...estado,
+      oportunidades: anterior.oportunidades,
+      actividades: estado.actividades.filter((actividad) => actividad.id !== nota.id),
+      clientes: anterior.clientes,
+    }));
+}
+
+export function crearOportunidad(datos: Pick<Oportunidad, "idCliente" | "titulo" | "idServicio" | "monto" | "fechaCierreEstimada" | "idVendedor">) {
+  const hoy = fechaDeHoy();
+  const oportunidad: Oportunidad = {
+    ...datos,
+    id: crearId("opo"),
+    etapa: "prospecto",
+    probabilidad: probabilidadPorEtapa.prospecto,
+    fechaCreacion: hoy,
+    fechaCierre: null,
+    motivoPerdida: null,
+    historialEtapas: [{ etapa: "prospecto", fecha: hoy }],
+  };
+  const nota: Actividad = {
+    id: crearId("act"),
+    idCliente: datos.idCliente,
+    idOportunidad: oportunidad.id,
+    tipo: "nota",
+    fecha: hoy,
+    descripcion: `Se registró la oportunidad: ${datos.titulo.toLowerCase()}.`,
+    idAutor: datos.idVendedor,
+  };
+  actualizarEstado((estado) => ({
+    ...estado,
+    oportunidades: [...estado.oportunidades, oportunidad],
+    actividades: [nota, ...estado.actividades],
+  }));
+  return oportunidad;
 }

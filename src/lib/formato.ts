@@ -87,6 +87,15 @@ export function formatearAntiguedad(desde: string, hasta: string = fechaDeHoy())
   return `${textoAnios} y ${textoMeses}`;
 }
 
+// "hoy", "mañana", "ayer", "hace 3 días", "en 5 días".
+export function formatearFechaRelativa(fecha: string, hoy: string = fechaDeHoy()) {
+  const dias = Math.round((aFecha(fecha).getTime() - aFecha(hoy).getTime()) / 86400000);
+  if (dias === 0) return "hoy";
+  if (dias === 1) return "mañana";
+  if (dias === -1) return "ayer";
+  return dias < 0 ? `hace ${-dias} días` : `en ${dias} días`;
+}
+
 export function pluralizar(cantidad: number, singular: string, plural: string) {
   return `${cantidad} ${cantidad === 1 ? singular : plural}`;
 }
