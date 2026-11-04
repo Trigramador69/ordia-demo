@@ -4,14 +4,15 @@ import { crearAleatorio } from "./aleatorio.ts";
 import { generarAusencias } from "./ausencias.ts";
 import { generarAsientosManuales, mesesDeHistoria } from "./contabilidad-inicial.ts";
 import { generarCrm } from "./crm.ts";
+import { generarFacturacion } from "./facturacion-inicial.ts";
 import { generarEquipo, idsVendedores, personaPorRol } from "./equipo.ts";
 import { fechaDeHoy, mesDeFecha, sumarDias, sumarMesesAMes, ultimoDiaDelMes } from "./fechas.ts";
 import { diaHabilDesde } from "./feriados.ts";
 import { crearGeneradorIdentidades } from "./identidades.ts";
-import type { Asiento, EstadoDemo, PlanillaCerrada } from "./tipos.ts";
+import type { Asiento, Cobro, EstadoDemo, Factura, PlanillaCerrada } from "./tipos.ts";
 
 // Cambiar esta versión descarta lo guardado en los navegadores y vuelve a la semilla.
-export const versionEstadoDemo = 4;
+export const versionEstadoDemo = 5;
 
 // Cada parte usa su propia semilla para que un cambio en una no altere las demás.
 // Las fechas salen de `hoy`: con la misma fecha, los datos salen idénticos.
@@ -20,6 +21,7 @@ const semillas = {
   equipo: 1101,
   crm: 1102,
   contabilidad: 1103,
+  facturacion: 1104,
 };
 
 // Numera los asientos en orden de fecha, como en un libro diario.
@@ -52,13 +54,24 @@ export function crearEstadoInicial(hoy: string = fechaDeHoy()): EstadoDemo {
     });
   }
 
+  const facturacion = generarFacturacion(crearAleatorio(semillas.facturacion), crm, hoy, personaPorRol.administracion);
+
   const asientos = numerarAsientos(
     [
       ...generarAsientosManuales(crearAleatorio(semillas.contabilidad), hoy),
       ...planillasSinAsiento.map((planilla) => borradorAsientoPlanilla(planilla.mes, planilla.filas)),
+      ...facturacion.borradores,
     ],
     hoy,
   );
+  const idAsientoDe = (origen: Asiento["origen"], idOrigen: string) =>
+    asientos.find((asiento) => asiento.origen === origen && asiento.idOrigen === idOrigen)?.id ?? null;
+  const facturas: Factura[] = facturacion.facturas.map((factura) => ({
+    ...factura,
+    idAsiento: idAsientoDe("factura", factura.id)!,
+    idAsientoAnulacion: factura.estado === "anulada" ? idAsientoDe("anulacion_factura", factura.id) : null,
+  }));
+  const cobros: Cobro[] = facturacion.cobros.map((cobro) => ({ ...cobro, idAsiento: idAsientoDe("cobro", cobro.id)! }));
   const planillas: PlanillaCerrada[] = planillasSinAsiento.map((planilla) => ({
     ...planilla,
     idAsiento: asientos.find((asiento) => asiento.origen === "planilla" && asiento.idOrigen === planilla.id)!.id,
@@ -73,6 +86,8 @@ export function crearEstadoInicial(hoy: string = fechaDeHoy()): EstadoDemo {
     ...ausencias,
     planillas,
     ...crm,
+    facturas,
+    cobros,
     asientos,
   };
 }

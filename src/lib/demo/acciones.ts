@@ -4,7 +4,12 @@ import { nombresEtapa, probabilidadPorEtapa } from "@/datos/catalogos";
 import { contarDiasHabiles } from "@/datos/feriados";
 import type {
   Actividad,
+  Cobro,
   EtapaOportunidad,
+  Factura,
+  LineaFactura,
+  MedioDeCobro,
+  ModuloOpcional,
   MovimientoDiaLibre,
   Oportunidad,
   Permiso,
@@ -12,7 +17,8 @@ import type {
   Seguimiento,
   SolicitudVacacion,
 } from "@/datos/tipos";
-import { crearAsiento } from "@/lib/contabilidad";
+import { asientoDeAnulacion, asientoDeCobro, asientoDeFactura, crearAsiento, redondear } from "@/lib/contabilidad";
+import { cuentaDelMedio, generarCuf, totalDeLineas } from "@/lib/facturacion";
 import { actualizarEstado, obtenerEstado } from "@/lib/demo/almacen";
 import { borradorAsientoPlanilla, calcularPlanillaDelMes, idPlanillaDelMes } from "@/lib/planilla";
 import { fechaDeHoy } from "@/lib/formato";
@@ -252,4 +258,111 @@ export function crearOportunidad(datos: Pick<Oportunidad, "idCliente" | "titulo"
     actividades: [nota, ...estado.actividades],
   }));
   return oportunidad;
+}
+
+// --- Facturación (simulada) ---
+
+function horaActual() {
+  const ahora = new Date();
+  return `${String(ahora.getHours()).padStart(2, "0")}:${String(ahora.getMinutes()).padStart(2, "0")}`;
+}
+
+// Emite una factura y registra su asiento (cuenta por cobrar, ingreso, IVA e IT).
+export function emitirFactura(datos: {
+  idCliente: string;
+  idOportunidad: string | null;
+  documentoCliente: string;
+  razonSocialCliente: string;
+  lineas: Omit<LineaFactura, "subtotal">[];
+  idEmisor: string;
+}) {
+  const estadoActual = obtenerEstado();
+  const numero = estadoActual.facturas.reduce((maximo, factura) => Math.max(maximo, factura.numero), 1200) + 1;
+  const fecha = fechaDeHoy();
+  const hora = horaActual();
+  const lineas: LineaFactura[] = datos.lineas.map((linea) => ({ ...linea, subtotal: redondear(linea.cantidad * linea.precioUnitario) }));
+  const total = totalDeLineas(lineas);
+  const id = crearId("fac");
+  const asiento = crearAsiento(
+    asientoDeFactura({ idFactura: id, numeroFactura: numero, razonSocial: datos.razonSocialCliente, fecha, total }),
+    estadoActual.asientos,
+    fecha,
+  );
+  const factura: Factura = {
+    id,
+    numero,
+    cuf: generarCuf(numero, fecha, hora),
+    idCliente: datos.idCliente,
+    idOportunidad: datos.idOportunidad,
+    fecha,
+    hora,
+    documentoCliente: datos.documentoCliente,
+    razonSocialCliente: datos.razonSocialCliente,
+    lineas,
+    total,
+    estado: "vigente",
+    fechaAnulacion: null,
+    motivoAnulacion: null,
+    idAsiento: asiento.id,
+    idAsientoAnulacion: null,
+    idEmisor: datos.idEmisor,
+  };
+  actualizarEstado((estado) => ({ ...estado, facturas: [...estado.facturas, factura], asientos: [...estado.asientos, asiento] }));
+  return { factura, asiento };
+}
+
+// Anula una factura sin cobros: queda registrada como anulada y su asiento se revierte.
+export function anularFactura(idFactura: string, motivo: string) {
+  const estadoActual = obtenerEstado();
+  const factura = estadoActual.facturas.find((item) => item.id === idFactura);
+  const original = estadoActual.asientos.find((asiento) => asiento.id === factura?.idAsiento);
+  if (!factura || !original || factura.estado === "anulada") throw new Error("La factura no se puede anular.");
+  if (estadoActual.cobros.some((cobro) => cobro.idFactura === idFactura)) throw new Error("La factura tiene cobros registrados.");
+  const fecha = fechaDeHoy();
+  const reverso = crearAsiento(
+    asientoDeAnulacion(original, {
+      fecha,
+      glosa: `Anulación de la factura N° ${factura.numero} a ${factura.razonSocialCliente}. Motivo: ${motivo.toLowerCase()}`,
+    }),
+    estadoActual.asientos,
+    fecha,
+  );
+  actualizarEstado((estado) => ({
+    ...estado,
+    facturas: estado.facturas.map((item) =>
+      item.id === idFactura
+        ? { ...item, estado: "anulada" as const, fechaAnulacion: fecha, motivoAnulacion: motivo, idAsientoAnulacion: reverso.id }
+        : item,
+    ),
+    asientos: [...estado.asientos, reverso],
+  }));
+  return reverso;
+}
+
+export function registrarCobro(datos: { idFactura: string; fecha: string; monto: number; medio: MedioDeCobro }) {
+  const estadoActual = obtenerEstado();
+  const factura = estadoActual.facturas.find((item) => item.id === datos.idFactura);
+  if (!factura || factura.estado === "anulada") throw new Error("La factura no admite cobros.");
+  const id = crearId("cob");
+  const asiento = crearAsiento(
+    asientoDeCobro({
+      idCobro: id,
+      numeroFactura: factura.numero,
+      razonSocial: factura.razonSocialCliente,
+      fecha: datos.fecha,
+      monto: datos.monto,
+      medio: cuentaDelMedio(datos.medio),
+    }),
+    estadoActual.asientos,
+    fechaDeHoy(),
+  );
+  const cobro: Cobro = { ...datos, id, monto: redondear(datos.monto), idAsiento: asiento.id };
+  actualizarEstado((estado) => ({ ...estado, cobros: [...estado.cobros, cobro], asientos: [...estado.asientos, asiento] }));
+  return { cobro, asiento };
+}
+
+// --- Configuración ---
+
+export function cambiarModulo(modulo: ModuloOpcional, activo: boolean) {
+  actualizarEstado((estado) => ({ ...estado, modulos: { ...estado.modulos, [modulo]: activo } }));
 }

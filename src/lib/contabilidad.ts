@@ -159,12 +159,12 @@ export function asientoDeFactura(datos: {
 
 // Revierte un asiento: mismas cuentas con el debe y el haber invertidos.
 export function asientoDeAnulacion(
-  original: Asiento,
-  datos: { fecha: string; motivo: string; origen?: OrigenAsiento },
+  original: Pick<BorradorAsiento, "lineas" | "idOrigen">,
+  datos: { fecha: string; glosa: string; origen?: OrigenAsiento },
 ): BorradorAsiento {
   return {
     fecha: datos.fecha,
-    glosa: `Anulación del asiento N° ${original.numero} (${original.glosa}). Motivo: ${datos.motivo}`,
+    glosa: datos.glosa,
     origen: datos.origen ?? "anulacion_factura",
     idOrigen: original.idOrigen,
     lineas: original.lineas.map((linea) => ({ ...linea, debe: linea.haber, haber: linea.debe })),

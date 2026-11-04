@@ -219,6 +219,51 @@ export interface Seguimiento {
   idActividad: string | null;
 }
 
+// --- Facturación (simulada: no se envía al SIAT) ---
+
+export interface LineaFactura {
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
+export type EstadoFactura = "vigente" | "anulada";
+
+export interface Factura {
+  id: string;
+  numero: number;
+  // Código único de factura, simulado con el formato del SIAT.
+  cuf: string;
+  idCliente: string;
+  idOportunidad: string | null;
+  fecha: string;
+  // "HH:MM", como en la representación gráfica.
+  hora: string;
+  // NIT o carnet y razón social tal como se facturó.
+  documentoCliente: string;
+  razonSocialCliente: string;
+  lineas: LineaFactura[];
+  total: number;
+  estado: EstadoFactura;
+  fechaAnulacion: string | null;
+  motivoAnulacion: string | null;
+  idAsiento: string;
+  idAsientoAnulacion: string | null;
+  idEmisor: string;
+}
+
+export type MedioDeCobro = "transferencia" | "efectivo" | "cheque";
+
+export interface Cobro {
+  id: string;
+  idFactura: string;
+  fecha: string;
+  monto: number;
+  medio: MedioDeCobro;
+  idAsiento: string;
+}
+
 // --- Contabilidad ---
 
 export type TipoCuenta = "activo" | "pasivo" | "patrimonio" | "ingreso" | "gasto";
@@ -284,5 +329,7 @@ export interface EstadoDemo {
   oportunidades: Oportunidad[];
   actividades: Actividad[];
   seguimientos: Seguimiento[];
+  facturas: Factura[];
+  cobros: Cobro[];
   asientos: Asiento[];
 }

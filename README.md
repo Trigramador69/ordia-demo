@@ -2,7 +2,7 @@
 
 Demo de la plataforma de gestión administrativa de Zékiri para empresas chicas o medianas: recursos humanos (vacaciones, días libres, permisos y planilla), CRM con seguimientos y ciclo de ventas, facturación simulada, contabilidad y activos fijos, conectados entre sí. El plan de trabajo y el contexto están en [plan_Ordia.md](plan_Ordia.md).
 
-Es un frontend con datos de ejemplo: no hay base de datos ni inicio de sesión. Los cambios que se hacen durante la demo se guardan en el navegador, y el botón **Reiniciar demo** vuelve al estado inicial.
+Es un frontend con datos de ejemplo: no hay base de datos ni inicio de sesión. La facturación es una simulación: no se conecta con el SIAT y cada factura dice de forma visible que no tiene validez fiscal. Los cambios que se hacen durante la demo se guardan en el navegador, y el botón **Reiniciar demo** vuelve al estado inicial.
 
 ## Cómo levantarla
 
@@ -24,6 +24,8 @@ Abre en http://localhost:3000.
 | `src/lib/contabilidad.ts` | Modelo de asiento: validación, numeración, saldos y asientos automáticos |
 | `src/lib/vacaciones.ts` | Vacaciones por antigüedad, saldos de días libres y permisos |
 | `src/lib/crm.ts` | Alarmas automáticas del CRM, última actividad y grupos de seguimientos |
+| `src/lib/facturacion.ts`, `src/lib/factura-pdf.ts` | Facturación simulada: CUF, situación de cobro, leyendas y la factura en PDF con su QR (librería `qrcode`) |
+| `src/lib/ciclo-ventas.ts` | Indicadores del control del ciclo de ventas |
 | `src/lib/planilla.ts` | Cálculo de la planilla: bono de antigüedad, aportes, RC-IVA, aportes patronales, provisiones y su asiento |
 | `src/lib/pdf.ts`, `src/lib/boleta-pdf.ts` | Generador de PDF de una página (funciona en el navegador y en Node) y la boleta de pago |
 | `src/lib/demo/almacen.ts` | Estado de la demo en `localStorage`, sincronizado entre pestañas |

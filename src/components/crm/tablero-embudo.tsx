@@ -90,6 +90,7 @@ export function TableroEmbudo() {
     }
     const deshacer = moverOportunidad(oportunidad.id, etapa, usuarioDelRol(estado).id);
     toast.success(etapa === "ganada" ? `Ganada: ${oportunidad.titulo}.` : `${oportunidad.titulo} pasó a ${nombresEtapa[etapa]}.`, {
+      description: etapa === "ganada" && estado.modulos.facturacion ? "Ábrala para emitir su factura." : undefined,
       action: { label: "Deshacer", onClick: deshacer },
     });
   }

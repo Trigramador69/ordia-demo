@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, CircleCheck, CircleX, MessageSquarePlus } from "lucide-react";
+import { CalendarPlus, CircleCheck, CircleX, FileCheck2, FilePlus2, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import { DialogoAgendarSeguimiento, DialogoPerdida, DialogoRegistrarActividad } from "@/components/crm/dialogos";
+import { DialogoEmitirFactura } from "@/components/facturacion/dialogos";
 import { InsigniaEtapa, iconoActividad } from "@/components/crm/insignias";
 import { usuarioDelRol } from "@/components/panel/selector-rol";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,9 @@ import type { Oportunidad } from "@/datos/tipos";
 import { esAbierta, montoPonderado } from "@/lib/crm";
 import { moverOportunidad } from "@/lib/demo/acciones";
 import { useEstadoDemo } from "@/lib/demo/almacen";
-import { clientePorId, oportunidadPorId, personaPorId } from "@/lib/demo/consultas";
+import { clientePorId, facturaDeOportunidad, oportunidadPorId, personaPorId } from "@/lib/demo/consultas";
 import { fechaDeHoy, formatearFecha, formatearFechaRelativa, formatearMonto, nombreCompleto } from "@/lib/formato";
+import { puedeVerRuta } from "@/lib/navegacion";
 import { cn } from "@/lib/utils";
 
 export function DetalleOportunidad({ idOportunidad, alCerrar }: { idOportunidad: string | null; alCerrar: () => void }) {
@@ -43,6 +45,7 @@ function Contenido({ oportunidad }: { oportunidad: Oportunidad }) {
   function mover(etapa: (typeof etapasAbiertas)[number] | "ganada") {
     const deshacer = moverOportunidad(oportunidad.id, etapa, usuarioDelRol(estado).id);
     toast.success(etapa === "ganada" ? "Oportunidad ganada." : `Movida a ${nombresEtapa[etapa]}.`, {
+      description: etapa === "ganada" && estado.modulos.facturacion ? "Ya se puede emitir su factura desde aquí." : undefined,
       action: { label: "Deshacer", onClick: deshacer },
     });
   }
@@ -80,6 +83,8 @@ function Contenido({ oportunidad }: { oportunidad: Oportunidad }) {
           )}
           {oportunidad.motivoPerdida && <Dato etiqueta="Motivo de la pérdida" valor={oportunidad.motivoPerdida} ancho />}
         </dl>
+
+        {oportunidad.etapa === "ganada" && <SeccionFactura oportunidad={oportunidad} />}
 
         {abierta && (
           <section className="flex flex-col gap-2">
@@ -170,6 +175,50 @@ function Contenido({ oportunidad }: { oportunidad: Oportunidad }) {
       />
       <DialogoPerdida oportunidad={perdiendo} alCerrar={() => setPerdiendo(null)} />
     </>
+  );
+}
+
+// Qué pasa con la factura de una venta ganada, según el módulo de facturación.
+function SeccionFactura({ oportunidad }: { oportunidad: Oportunidad }) {
+  const estado = useEstadoDemo();
+  const [emitiendo, setEmitiendo] = useState(false);
+  const factura = facturaDeOportunidad(estado, oportunidad.id);
+
+  if (!estado.modulos.facturacion) {
+    return (
+      <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+        Sin el módulo de facturación: la factura se emite en el sistema que ya usan y el ingreso se registra con un asiento manual en el
+        libro diario.
+      </p>
+    );
+  }
+  if (factura) {
+    return (
+      <p className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-exito-suave px-3 py-2 text-sm text-exito">
+        <span className="flex items-center gap-2">
+          <FileCheck2 className="size-4" />
+          Facturada: N° {factura.numero} del {formatearFecha(factura.fecha)}
+        </span>
+        {puedeVerRuta(estado.rol, "/facturas") && (
+          <Link href={`/facturas/${factura.id}`} className="font-medium underline-offset-4 hover:underline">
+            Ver factura
+          </Link>
+        )}
+      </p>
+    );
+  }
+  if (!puedeVerRuta(estado.rol, "/facturas")) {
+    return <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">Ganada y sin facturar: la factura la emite Administración.</p>;
+  }
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/30 bg-marca-suave px-3 py-2 text-sm">
+      <span className="text-primary">Ganada y todavía sin facturar.</span>
+      <Button size="sm" onClick={() => setEmitiendo(true)}>
+        <FilePlus2 />
+        Emitir factura
+      </Button>
+      <DialogoEmitirFactura idCliente={oportunidad.idCliente} idOportunidad={oportunidad.id} abierto={emitiendo} alCambiarAbierto={setEmitiendo} />
+    </div>
   );
 }
 

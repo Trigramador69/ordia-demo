@@ -3,6 +3,7 @@ import { personaPorRol } from "@/datos/equipo";
 import { mesDeFecha } from "@/datos/fechas";
 import type { Cliente, EstadoDemo, FilaPlanilla, Oportunidad, PlanillaCerrada, Seguimiento } from "@/datos/tipos";
 import { alarmasAutomaticas } from "@/lib/crm";
+import { situacionDeFactura } from "@/lib/facturacion";
 import { calcularPlanillaDelMes, totalesPlanilla } from "@/lib/planilla";
 
 // Consultas derivadas del estado de la demo. Son funciones puras: las pantallas
@@ -131,4 +132,31 @@ export function oportunidadPorId(estado: EstadoDemo, idOportunidad: string) {
 export function puedeVerCliente(estado: EstadoDemo, cliente: Cliente) {
   const idVendedor = idVendedorDelRol(estado);
   return !idVendedor || cliente.idVendedor === idVendedor;
+}
+
+// --- Facturación ---
+
+export function facturaPorId(estado: EstadoDemo, idFactura: string) {
+  return estado.facturas.find((factura) => factura.id === idFactura);
+}
+
+// Factura vigente de una oportunidad, si ya se facturó.
+export function facturaDeOportunidad(estado: EstadoDemo, idOportunidad: string) {
+  return estado.facturas.find((factura) => factura.idOportunidad === idOportunidad && factura.estado === "vigente");
+}
+
+export function cobrosDeFactura(estado: EstadoDemo, idFactura: string) {
+  return estado.cobros.filter((cobro) => cobro.idFactura === idFactura).sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+// Facturas con su situación de cobro, de la más reciente a la más antigua.
+export function facturasConSituacion(estado: EstadoDemo, idCliente?: string) {
+  return estado.facturas
+    .filter((factura) => !idCliente || factura.idCliente === idCliente)
+    .map((factura) => ({ factura, ...situacionDeFactura(factura, estado.cobros) }))
+    .sort((a, b) => b.factura.numero - a.factura.numero);
+}
+
+export function saldoPorCobrarDeCliente(estado: EstadoDemo, idCliente: string) {
+  return facturasConSituacion(estado, idCliente).reduce((suma, item) => suma + item.saldo, 0);
 }

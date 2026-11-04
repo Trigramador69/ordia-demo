@@ -3,18 +3,23 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, CalendarPlus, CircleAlert, MessageSquarePlus, Plus } from "lucide-react";
+import { ArrowLeft, CalendarPlus, CircleAlert, FilePlus2, MessageSquarePlus, Plus } from "lucide-react";
 import { DetalleOportunidad } from "@/components/crm/detalle-oportunidad";
 import { DialogoAgendarSeguimiento, DialogoNuevaOportunidad, DialogoRegistrarActividad } from "@/components/crm/dialogos";
 import { FechaSeguimiento, InsigniaEstadoCliente, InsigniaEtapa, iconoActividad } from "@/components/crm/insignias";
+import { DialogoEmitirFactura } from "@/components/facturacion/dialogos";
+import { InsigniaSituacion } from "@/components/facturacion/lista-facturas";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { nombresOrigenCliente, nombresTipoActividad } from "@/datos/catalogos";
+import { diasDeCredito } from "@/datos/facturacion-inicial";
+import { diferenciaEnDias } from "@/datos/fechas";
 import type { Cliente, Seguimiento } from "@/datos/tipos";
 import { describirAlarma, esAbierta, nombresAlarma } from "@/lib/crm";
 import { useEstadoDemo } from "@/lib/demo/almacen";
-import { alarmasVisibles, oportunidadPorId, personaPorId, puedeVerCliente } from "@/lib/demo/consultas";
+import { alarmasVisibles, facturasConSituacion, oportunidadPorId, personaPorId, puedeVerCliente } from "@/lib/demo/consultas";
 import { fechaDeHoy, formatearFecha, formatearFechaRelativa, formatearMonto, nombreCompleto, pluralizar } from "@/lib/formato";
+import { puedeVerRuta } from "@/lib/navegacion";
 import { cn } from "@/lib/utils";
 
 export function FichaCliente() {
@@ -206,6 +211,8 @@ function Contenido({ cliente, enlaceVolver }: { cliente: Cliente; enlaceVolver: 
             )}
           </Card>
 
+          {estado.modulos.facturacion && <FacturacionDelCliente idCliente={cliente.id} />}
+
           <Card>
             <CardHeader>
               <CardTitle>Historial de actividad</CardTitle>
@@ -250,6 +257,70 @@ function Contenido({ cliente, enlaceVolver }: { cliente: Cliente; enlaceVolver: 
       <DialogoNuevaOportunidad idClienteFijo={cliente.id} abierto={nuevaOportunidad} alCambiarAbierto={setNuevaOportunidad} />
       <DetalleOportunidad idOportunidad={oportunidadAbierta} alCerrar={() => setOportunidadAbierta(null)} />
     </>
+  );
+}
+
+// Facturas del cliente y su saldo por cobrar (solo con el módulo de facturación).
+function FacturacionDelCliente({ idCliente }: { idCliente: string }) {
+  const estado = useEstadoDemo();
+  const hoy = fechaDeHoy();
+  const [emitiendo, setEmitiendo] = useState(false);
+  const filas = facturasConSituacion(estado, idCliente);
+  const saldo = filas.reduce((suma, fila) => suma + fila.saldo, 0);
+  const verFacturas = puedeVerRuta(estado.rol, "/facturas");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Facturación</CardTitle>
+        <CardDescription>
+          {filas.length === 0 ? "Todavía no tiene facturas." : saldo > 0 ? `Saldo por cobrar: ${formatearMonto(saldo)}` : "Sin saldo por cobrar."}
+        </CardDescription>
+        {verFacturas && (
+          <CardAction>
+            <Button variant="outline" size="sm" onClick={() => setEmitiendo(true)}>
+              <FilePlus2 />
+              Emitir factura
+            </Button>
+          </CardAction>
+        )}
+      </CardHeader>
+      {filas.length > 0 && (
+        <CardContent>
+          <ul className="flex flex-col divide-y">
+            {filas.map(({ factura, saldo: saldoFactura, situacion }) => {
+              const contenido = (
+                <>
+                  <span className="flex flex-col">
+                    <span className="font-medium">Factura N° {factura.numero}</span>
+                    <span className="text-xs text-muted-foreground">{formatearFecha(factura.fecha)}</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-right tabular-nums">
+                      {formatearMonto(factura.total)}
+                      {saldoFactura > 0 && saldoFactura < factura.total && <span className="block text-xs text-muted-foreground">saldo {formatearMonto(saldoFactura)}</span>}
+                    </span>
+                    <InsigniaSituacion situacion={situacion} vencida={saldoFactura > 0 && diferenciaEnDias(factura.fecha, hoy) > diasDeCredito} />
+                  </span>
+                </>
+              );
+              return (
+                <li key={factura.id}>
+                  {verFacturas ? (
+                    <Link href={`/facturas/${factura.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-sm hover:bg-muted/50">
+                      {contenido}
+                    </Link>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">{contenido}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </CardContent>
+      )}
+      <DialogoEmitirFactura idCliente={idCliente} abierto={emitiendo} alCambiarAbierto={setEmitiendo} />
+    </Card>
   );
 }
 
