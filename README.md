@@ -33,7 +33,7 @@ Abre en http://localhost:3000.
 | `src/lib/navegacion.ts` | Módulos, pantallas y qué rol ve cada una |
 | `src/components/` | Componentes de pantalla; `ui/` son los de shadcn/ui |
 | `src/app/(panel)/` | Las pantallas |
-| `scripts/` | Revisión de la planilla en consola |
+| `scripts/` | Revisión de la planilla en consola y pruebas de punta a punta |
 
 ## Revisar la planilla con un contador
 
@@ -43,6 +43,17 @@ pnpm revisar:planilla 2026-10   # otro mes
 ```
 
 Imprime la planilla de los datos de ejemplo concepto por concepto y el asiento que genera al cerrarse (si el mes ya está cerrado, la muestra tal como se cerró). Los porcentajes y montos salen de `src/datos/parametros.ts`: si algo no coincide, se corrige ahí.
+
+## Pruebas
+
+```bash
+pnpm pruebas              # compila, levanta la demo y la prueba en Chrome sin interfaz
+pnpm pruebas --sin-build  # prueba la última compilación
+```
+
+Recorre todas las pantallas (sin errores de consola ni desborde horizontal, también a ancho de celular) y el recorrido de la presentación: registrar un seguimiento, ganar una oportunidad y facturarla, el interruptor de facturación, pedir y aprobar vacaciones, cerrar la planilla y bajar una boleta, registrar la depreciación, revisar que los reportes cuadren, los permisos de cada rol y el reinicio. Usa el Chrome instalado (`puppeteer-core`); si no lo encuentra, se indica con `CHROME_PATH`.
+
+Lo que conviene ver con ojos está en [plan_pruebas_manuales.md](plan_pruebas_manuales.md), y el guion para presentar, en [guion_presentacion.md](guion_presentacion.md).
 
 ## Datos de ejemplo
 
