@@ -160,3 +160,14 @@ export function facturasConSituacion(estado: EstadoDemo, idCliente?: string) {
 export function saldoPorCobrarDeCliente(estado: EstadoDemo, idCliente: string) {
   return facturasConSituacion(estado, idCliente).reduce((suma, item) => suma + item.saldo, 0);
 }
+
+// --- Activos fijos ---
+
+export function activoPorId(estado: EstadoDemo, idActivo: string) {
+  return estado.activos.find((activo) => activo.id === idActivo);
+}
+
+// Último mes con la depreciación registrada: hasta ahí llega el valor en libros.
+export function ultimoMesDepreciado(estado: EstadoDemo) {
+  return estado.depreciaciones.reduce((ultimo, depreciacion) => (depreciacion.mes > ultimo ? depreciacion.mes : ultimo), "");
+}

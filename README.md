@@ -26,6 +26,7 @@ Abre en http://localhost:3000.
 | `src/lib/crm.ts` | Alarmas automáticas del CRM, última actividad y grupos de seguimientos |
 | `src/lib/facturacion.ts`, `src/lib/factura-pdf.ts` | Facturación simulada: CUF, situación de cobro, leyendas y la factura en PDF con su QR (librería `qrcode`) |
 | `src/lib/ciclo-ventas.ts` | Indicadores del control del ciclo de ventas |
+| `src/lib/activos.ts` | Depreciación lineal de los activos fijos: cuota, cuadro mes a mes y valor en libros |
 | `src/lib/planilla.ts` | Cálculo de la planilla: bono de antigüedad, aportes, RC-IVA, aportes patronales, provisiones y su asiento |
 | `src/lib/pdf.ts`, `src/lib/boleta-pdf.ts` | Generador de PDF de una página (funciona en el navegador y en Node) y la boleta de pago |
 | `src/lib/demo/almacen.ts` | Estado de la demo en `localStorage`, sincronizado entre pestañas |

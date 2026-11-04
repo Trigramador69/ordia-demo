@@ -1,4 +1,6 @@
-import type { Cuenta, TipoCuenta } from "./tipos.ts";
+import type { CategoriaActivo, Cuenta, TipoCuenta } from "./tipos.ts";
+
+export type { CategoriaActivo };
 
 // Plan de cuentas simplificado de una empresa de servicios en Bolivia. El
 // código tiene cuatro niveles (1.1.1.01): grupo, subgrupo, rubro y cuenta. Solo
@@ -147,11 +149,9 @@ export const cuentasDelSistema = {
 } as const;
 
 // Cuenta del activo y de su depreciación acumulada, por categoría de activo.
-export const cuentasPorCategoriaDeActivo = {
+export const cuentasPorCategoriaDeActivo: Record<CategoriaActivo, { activo: string; depreciacionAcumulada: string }> = {
   muebles: { activo: "1.2.1.01", depreciacionAcumulada: "1.2.2.01" },
   computacion: { activo: "1.2.1.02", depreciacionAcumulada: "1.2.2.02" },
   vehiculos: { activo: "1.2.1.03", depreciacionAcumulada: "1.2.2.03" },
   equipos_oficina: { activo: "1.2.1.04", depreciacionAcumulada: "1.2.2.04" },
-} as const;
-
-export type CategoriaActivo = keyof typeof cuentasPorCategoriaDeActivo;
+};

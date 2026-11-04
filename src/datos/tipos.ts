@@ -264,6 +264,44 @@ export interface Cobro {
   idAsiento: string;
 }
 
+// --- Activos fijos ---
+
+export type CategoriaActivo = "muebles" | "computacion" | "vehiculos" | "equipos_oficina";
+
+export type EstadoActivo = "en_uso" | "en_reparacion" | "baja";
+
+export type TipoEventoActivo = "compra" | "asignacion" | "reparacion" | "retorno" | "baja";
+
+export interface EventoActivo {
+  fecha: string;
+  tipo: TipoEventoActivo;
+  detalle: string;
+}
+
+export interface Activo {
+  id: string;
+  codigo: string;
+  nombre: string;
+  categoria: CategoriaActivo;
+  fechaCompra: string;
+  valorCompra: number;
+  idResponsable: string | null;
+  ubicacion: string;
+  estado: EstadoActivo;
+  fechaBaja: string | null;
+  historial: EventoActivo[];
+}
+
+// Depreciación registrada de un mes: el monto de cada activo y su asiento.
+export interface DepreciacionDelMes {
+  id: string;
+  // "2026-10"
+  mes: string;
+  fechaRegistro: string;
+  montos: { idActivo: string; monto: number }[];
+  idAsiento: string;
+}
+
 // --- Contabilidad ---
 
 export type TipoCuenta = "activo" | "pasivo" | "patrimonio" | "ingreso" | "gasto";
@@ -331,5 +369,7 @@ export interface EstadoDemo {
   seguimientos: Seguimiento[];
   facturas: Factura[];
   cobros: Cobro[];
+  activos: Activo[];
+  depreciaciones: DepreciacionDelMes[];
   asientos: Asiento[];
 }

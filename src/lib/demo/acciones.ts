@@ -3,7 +3,11 @@
 import { nombresEtapa, probabilidadPorEtapa } from "@/datos/catalogos";
 import { contarDiasHabiles } from "@/datos/feriados";
 import type {
+  Activo,
   Actividad,
+  DepreciacionDelMes,
+  EventoActivo,
+  LineaAsiento,
   Cobro,
   EtapaOportunidad,
   Factura,
@@ -17,7 +21,10 @@ import type {
   Seguimiento,
   SolicitudVacacion,
 } from "@/datos/tipos";
-import { asientoDeAnulacion, asientoDeCobro, asientoDeFactura, crearAsiento, redondear } from "@/lib/contabilidad";
+import { ultimoDiaDelMes } from "@/datos/fechas";
+import { formatearNombreMesYAnio } from "@/datos/meses";
+import { calcularDepreciacionDelMes, idDepreciacionDelMes } from "@/lib/activos";
+import { asientoDeAnulacion, asientoDeCobro, asientoDeDepreciacion, asientoDeFactura, crearAsiento, redondear } from "@/lib/contabilidad";
 import { cuentaDelMedio, generarCuf, totalDeLineas } from "@/lib/facturacion";
 import { actualizarEstado, obtenerEstado } from "@/lib/demo/almacen";
 import { borradorAsientoPlanilla, calcularPlanillaDelMes, idPlanillaDelMes } from "@/lib/planilla";
@@ -365,4 +372,72 @@ export function registrarCobro(datos: { idFactura: string; fecha: string; monto:
 
 export function cambiarModulo(modulo: ModuloOpcional, activo: boolean) {
   actualizarEstado((estado) => ({ ...estado, modulos: { ...estado.modulos, [modulo]: activo } }));
+}
+
+// --- Contabilidad ---
+
+// Registra un asiento manual. crearAsiento lo valida y lo numera; si no cuadra,
+// lanza un error con la lista de problemas.
+export function registrarAsientoManual(datos: { fecha: string; glosa: string; lineas: LineaAsiento[] }) {
+  const estadoActual = obtenerEstado();
+  const asiento = crearAsiento({ ...datos, origen: "manual", idOrigen: null }, estadoActual.asientos, fechaDeHoy());
+  actualizarEstado((estado) => ({ ...estado, asientos: [...estado.asientos, asiento] }));
+  return asiento;
+}
+
+// --- Activos fijos ---
+
+export function registrarDepreciacion(mes: string) {
+  const estadoActual = obtenerEstado();
+  if (estadoActual.depreciaciones.some((depreciacion) => depreciacion.mes === mes)) throw new Error("La depreciación de ese mes ya está registrada.");
+  const calculo = calcularDepreciacionDelMes(estadoActual.activos, mes);
+  const id = idDepreciacionDelMes(mes);
+  const asiento = crearAsiento(
+    asientoDeDepreciacion({ idDepreciacion: id, nombreMes: formatearNombreMesYAnio(mes), fecha: ultimoDiaDelMes(mes), porCategoria: calculo.porCategoria }),
+    estadoActual.asientos,
+    fechaDeHoy(),
+  );
+  const depreciacion: DepreciacionDelMes = { id, mes, fechaRegistro: fechaDeHoy(), montos: calculo.montos, idAsiento: asiento.id };
+  actualizarEstado((estado) => ({
+    ...estado,
+    depreciaciones: [...estado.depreciaciones, depreciacion],
+    asientos: [...estado.asientos, asiento],
+  }));
+  const deshacer = () =>
+    actualizarEstado((estado) => ({
+      ...estado,
+      depreciaciones: estado.depreciaciones.filter((item) => item.id !== id),
+      asientos: estado.asientos.filter((item) => item.id !== asiento.id),
+    }));
+  return { asiento, deshacer };
+}
+
+function agregarEvento(activo: Activo, evento: EventoActivo): Activo {
+  return { ...activo, historial: [...activo.historial, evento] };
+}
+
+export function reasignarActivo(idActivo: string, idResponsable: string, ubicacion: string, detalle: string) {
+  actualizarEstado((estado) => ({
+    ...estado,
+    activos: estado.activos.map((activo) =>
+      activo.id === idActivo
+        ? agregarEvento({ ...activo, idResponsable, ubicacion }, { fecha: fechaDeHoy(), tipo: "asignacion", detalle })
+        : activo,
+    ),
+  }));
+}
+
+// Envía un activo a reparación o lo da por reparado.
+export function cambiarEstadoReparacion(idActivo: string, enReparacion: boolean, detalle: string) {
+  actualizarEstado((estado) => ({
+    ...estado,
+    activos: estado.activos.map((activo) =>
+      activo.id === idActivo && activo.estado !== "baja"
+        ? agregarEvento(
+            { ...activo, estado: enReparacion ? "en_reparacion" : "en_uso" },
+            { fecha: fechaDeHoy(), tipo: enReparacion ? "reparacion" : "retorno", detalle },
+          )
+        : activo,
+    ),
+  }));
 }

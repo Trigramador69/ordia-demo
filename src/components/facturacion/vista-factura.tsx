@@ -19,6 +19,7 @@ import { asientoPorId, cobrosDeFactura, facturaPorId, oportunidadPorId } from "@
 import { crearPdfFactura, nombreArchivoFactura } from "@/lib/factura-pdf";
 import { nombresMedioDeCobro, situacionDeFactura } from "@/lib/facturacion";
 import { fechaDeHoy, formatearFecha, formatearImporte, formatearMonto } from "@/lib/formato";
+import { puedeVerRuta } from "@/lib/navegacion";
 import { descargarPdf } from "@/lib/pdf";
 
 export function VistaFactura() {
@@ -88,9 +89,11 @@ function Contenido({ factura }: { factura: Factura }) {
           Cobrado {formatearMonto(cobrado)} · saldo {formatearMonto(saldo)}
           {vencida && ` · emitida hace ${diferenciaEnDias(factura.fecha, hoy)} días`}
         </span>
-        <Link href={`/clientes/${factura.idCliente}`} className="text-muted-foreground hover:underline">
-          Ver cliente
-        </Link>
+        {puedeVerRuta(estado.rol, "/clientes") && (
+          <Link href={`/clientes/${factura.idCliente}`} className="text-muted-foreground hover:underline">
+            Ver cliente
+          </Link>
+        )}
         {oportunidad && <Badge variant="outline">De la oportunidad: {oportunidad.titulo}</Badge>}
         {factura.estado === "vigente" && cobros.length > 0 && (
           <span className="text-xs text-muted-foreground">Con cobros registrados no se puede anular.</span>

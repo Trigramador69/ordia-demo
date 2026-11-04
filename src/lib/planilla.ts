@@ -1,6 +1,7 @@
 import { aniosCumplidos, primerDiaDelMes, ultimoDiaDelMes } from "../datos/fechas.ts";
 import { formatearNombreMesYAnio } from "../datos/meses.ts";
 import { parametrosPlanilla as p } from "../datos/parametros.ts";
+import { cuentasDelSistema as cuentas } from "../datos/plan-cuentas.ts";
 import type { FilaPlanilla, Permiso, Persona } from "../datos/tipos.ts";
 import { aCentavos, asientoDePlanilla, redondear, type BorradorAsiento, type TotalesParaAsientoPlanilla } from "./contabilidad.ts";
 import { diasSinGoceEnMes } from "./vacaciones.ts";
@@ -171,4 +172,38 @@ export function borradorAsientoPlanilla(mes: string, filas: FilaPlanilla[]): Bor
     fecha: ultimoDiaDelMes(mes),
     totales: totalesParaAsiento(filas),
   });
+}
+
+// Pagos de una planilla cerrada, por banco: los sueldos (al cerrarla) y los
+// aportes y retenciones (a la Gestora, la Caja de Salud e Impuestos), hasta el
+// día 15 del mes siguiente.
+export function borradoresPagoPlanilla(mes: string, filas: FilaPlanilla[], fechaSueldos: string, fechaAportes: string): BorradorAsiento[] {
+  const t = totalesParaAsiento(filas);
+  const nombreMes = formatearNombreMesYAnio(mes);
+  const aportes = redondear(t.aporteLaboral + t.aportesPatronalesAfp + t.aportePatronalCajaDeSalud + t.rcIva);
+  return [
+    {
+      fecha: fechaSueldos,
+      glosa: `Pago de sueldos de ${nombreMes}`,
+      origen: "manual",
+      idOrigen: null,
+      lineas: [
+        { codigoCuenta: cuentas.sueldosPorPagar, debe: t.liquidoPagable, haber: 0 },
+        { codigoCuenta: cuentas.banco, debe: 0, haber: t.liquidoPagable },
+      ],
+    },
+    {
+      fecha: fechaAportes,
+      glosa: `Pago de aportes y retenciones de ${nombreMes}`,
+      origen: "manual",
+      idOrigen: null,
+      lineas: [
+        { codigoCuenta: cuentas.aportesLaboralesPorPagar, debe: t.aporteLaboral, haber: 0 },
+        { codigoCuenta: cuentas.aportesPatronalesAfpPorPagar, debe: t.aportesPatronalesAfp, haber: 0 },
+        { codigoCuenta: cuentas.cajaDeSaludPorPagar, debe: t.aportePatronalCajaDeSalud, haber: 0 },
+        { codigoCuenta: cuentas.rcIvaPorPagar, debe: t.rcIva, haber: 0 },
+        { codigoCuenta: cuentas.banco, debe: 0, haber: aportes },
+      ],
+    },
+  ];
 }

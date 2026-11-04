@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { diasDeCredito } from "@/datos/facturacion-inicial";
 import { diferenciaEnDias, mesDeFecha } from "@/datos/fechas";
 import { useEstadoDemo } from "@/lib/demo/almacen";
-import { facturasConSituacion } from "@/lib/demo/consultas";
+import { clientePorId, facturaDeOportunidad, facturasConSituacion } from "@/lib/demo/consultas";
 import { nombresSituacionFactura, type SituacionFactura } from "@/lib/facturacion";
 import { fechaDeHoy, formatearFecha, formatearImporte, formatearMonto, pluralizar } from "@/lib/formato";
 import { useFiltroUrl, useFiltroUrlTexto } from "@/lib/use-filtro-url";
@@ -51,6 +51,12 @@ export function ListaFacturas() {
   const [busqueda, setBusqueda] = useFiltroUrlTexto("buscar");
   const [filtro, setFiltro] = useFiltroUrl<keyof typeof opcionesSituacion>("situacion", todas, Object.keys(opcionesSituacion) as (keyof typeof opcionesSituacion)[]);
   const [emitir, setEmitir] = useState(false);
+  const [emitirDesde, setEmitirDesde] = useState<string | null>(null);
+  const oportunidadAFacturar = emitirDesde ? estado.oportunidades.find((oportunidad) => oportunidad.id === emitirDesde) : undefined;
+  const sinFacturar = estado.oportunidades
+    .filter((oportunidad) => oportunidad.etapa === "ganada" && oportunidad.fechaCierre && diferenciaEnDias(oportunidad.fechaCierre, hoy) <= 60)
+    .filter((oportunidad) => !facturaDeOportunidad(estado, oportunidad.id))
+    .sort((a, b) => b.fechaCierre!.localeCompare(a.fechaCierre!));
 
   const filas = facturasConSituacion(estado).map((fila) => ({
     ...fila,
@@ -98,6 +104,34 @@ export function ListaFacturas() {
         />
         <Cifra titulo="Cobrado este mes" valor={formatearMonto(cobradoMes)} detalle="Transferencias, cheques y efectivo" />
       </div>
+
+      {sinFacturar.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Ventas ganadas sin facturar</CardTitle>
+            <CardDescription>Oportunidades ganadas en el CRM en los últimos 60 días que todavía no tienen factura.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col divide-y">
+            {sinFacturar.map((oportunidad) => (
+              <div key={oportunidad.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 text-sm first:pt-0 last:pb-0">
+                <span className="flex flex-col">
+                  <span className="font-medium">{oportunidad.titulo}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {clientePorId(estado, oportunidad.idCliente)?.razonSocial} · ganada el {formatearFecha(oportunidad.fechaCierre!)}
+                  </span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="tabular-nums">{formatearMonto(oportunidad.monto)}</span>
+                  <Button size="sm" onClick={() => setEmitirDesde(oportunidad.id)}>
+                    <FilePlus2 />
+                    Emitir factura
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-[1fr_16rem] lg:max-w-2xl">
         <div className="relative">
@@ -154,6 +188,14 @@ export function ListaFacturas() {
       </Card>
 
       <DialogoEmitirFactura abierto={emitir} alCambiarAbierto={setEmitir} />
+      {oportunidadAFacturar && (
+        <DialogoEmitirFactura
+          idCliente={oportunidadAFacturar.idCliente}
+          idOportunidad={oportunidadAFacturar.id}
+          abierto
+          alCambiarAbierto={(abierto) => !abierto && setEmitirDesde(null)}
+        />
+      )}
     </>
   );
 }

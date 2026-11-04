@@ -1,5 +1,7 @@
-import { crearAsiento, type BorradorAsiento } from "../lib/contabilidad.ts";
-import { borradorAsientoPlanilla, calcularPlanillaDelMes, idPlanillaDelMes } from "../lib/planilla.ts";
+import { calcularDepreciacionDelMes, idDepreciacionDelMes } from "../lib/activos.ts";
+import { asientoDeDepreciacion, crearAsiento, type BorradorAsiento } from "../lib/contabilidad.ts";
+import { borradorAsientoPlanilla, borradoresPagoPlanilla, calcularPlanillaDelMes, idPlanillaDelMes } from "../lib/planilla.ts";
+import { generarActivos } from "./activos-iniciales.ts";
 import { crearAleatorio } from "./aleatorio.ts";
 import { generarAusencias } from "./ausencias.ts";
 import { generarAsientosManuales, mesesDeHistoria } from "./contabilidad-inicial.ts";
@@ -9,10 +11,11 @@ import { generarEquipo, idsVendedores, personaPorRol } from "./equipo.ts";
 import { fechaDeHoy, mesDeFecha, sumarDias, sumarMesesAMes, ultimoDiaDelMes } from "./fechas.ts";
 import { diaHabilDesde } from "./feriados.ts";
 import { crearGeneradorIdentidades } from "./identidades.ts";
-import type { Asiento, Cobro, EstadoDemo, Factura, PlanillaCerrada } from "./tipos.ts";
+import { formatearNombreMesYAnio } from "./meses.ts";
+import type { Asiento, Cobro, DepreciacionDelMes, EstadoDemo, Factura, PlanillaCerrada } from "./tipos.ts";
 
 // Cambiar esta versión descarta lo guardado en los navegadores y vuelve a la semilla.
-export const versionEstadoDemo = 5;
+export const versionEstadoDemo = 6;
 
 // Cada parte usa su propia semilla para que un cambio en una no altere las demás.
 // Las fechas salen de `hoy`: con la misma fecha, los datos salen idénticos.
@@ -54,12 +57,36 @@ export function crearEstadoInicial(hoy: string = fechaDeHoy()): EstadoDemo {
     });
   }
 
+  // Activos fijos y su depreciación de los meses anteriores, ya registrada.
+  const activos = generarActivos(personas, hoy);
+  const depreciacionesSinAsiento = planillasSinAsiento.map((planilla) => ({
+    mes: planilla.mes,
+    fechaRegistro: planilla.fechaCierre,
+    ...calcularDepreciacionDelMes(activos, planilla.mes),
+  }));
+
   const facturacion = generarFacturacion(crearAleatorio(semillas.facturacion), crm, hoy, personaPorRol.administracion);
 
   const asientos = numerarAsientos(
     [
-      ...generarAsientosManuales(crearAleatorio(semillas.contabilidad), hoy),
+      ...generarAsientosManuales(crearAleatorio(semillas.contabilidad), hoy, activos),
+      ...depreciacionesSinAsiento.map((depreciacion) =>
+        asientoDeDepreciacion({
+          idDepreciacion: idDepreciacionDelMes(depreciacion.mes),
+          nombreMes: formatearNombreMesYAnio(depreciacion.mes),
+          fecha: ultimoDiaDelMes(depreciacion.mes),
+          porCategoria: depreciacion.porCategoria,
+        }),
+      ),
       ...planillasSinAsiento.map((planilla) => borradorAsientoPlanilla(planilla.mes, planilla.filas)),
+      ...planillasSinAsiento.flatMap((planilla) =>
+        borradoresPagoPlanilla(
+          planilla.mes,
+          planilla.filas,
+          planilla.fechaCierre,
+          diaHabilDesde(`${sumarMesesAMes(planilla.mes, 1)}-15`),
+        ).filter((borrador) => borrador.fecha <= hoy),
+      ),
       ...facturacion.borradores,
     ],
     hoy,
@@ -72,6 +99,13 @@ export function crearEstadoInicial(hoy: string = fechaDeHoy()): EstadoDemo {
     idAsientoAnulacion: factura.estado === "anulada" ? idAsientoDe("anulacion_factura", factura.id) : null,
   }));
   const cobros: Cobro[] = facturacion.cobros.map((cobro) => ({ ...cobro, idAsiento: idAsientoDe("cobro", cobro.id)! }));
+  const depreciaciones: DepreciacionDelMes[] = depreciacionesSinAsiento.map((depreciacion) => ({
+    id: idDepreciacionDelMes(depreciacion.mes),
+    mes: depreciacion.mes,
+    fechaRegistro: depreciacion.fechaRegistro,
+    montos: depreciacion.montos,
+    idAsiento: idAsientoDe("depreciacion", idDepreciacionDelMes(depreciacion.mes))!,
+  }));
   const planillas: PlanillaCerrada[] = planillasSinAsiento.map((planilla) => ({
     ...planilla,
     idAsiento: asientos.find((asiento) => asiento.origen === "planilla" && asiento.idOrigen === planilla.id)!.id,
@@ -88,6 +122,8 @@ export function crearEstadoInicial(hoy: string = fechaDeHoy()): EstadoDemo {
     ...crm,
     facturas,
     cobros,
+    activos,
+    depreciaciones,
     asientos,
   };
 }

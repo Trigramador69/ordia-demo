@@ -16,6 +16,7 @@ import { useEstadoDemo } from "@/lib/demo/almacen";
 import { facturaPorId, facturasConSituacion } from "@/lib/demo/consultas";
 import { nombresMedioDeCobro } from "@/lib/facturacion";
 import { fechaDeHoy, formatearFecha, formatearImporte, formatearMonto, pluralizar } from "@/lib/formato";
+import { puedeVerRuta } from "@/lib/navegacion";
 import { cn } from "@/lib/utils";
 
 export function VistaCobros() {
@@ -23,6 +24,7 @@ export function VistaCobros() {
   const hoy = fechaDeHoy();
   const mes = mesDeFecha(hoy);
   const [cobrando, setCobrando] = useState<Factura | null>(null);
+  const verClientes = puedeVerRuta(estado.rol, "/clientes");
 
   const pendientes = facturasConSituacion(estado)
     .filter((fila) => fila.saldo > 0)
@@ -87,9 +89,13 @@ export function VistaCobros() {
                   <p className="text-xs text-muted-foreground">{formatearFecha(factura.fecha)}</p>
                 </TableCell>
                 <TableCell>
-                  <Link href={`/clientes/${factura.idCliente}`} className="hover:underline">
-                    {factura.razonSocialCliente}
-                  </Link>
+                  {verClientes ? (
+                    <Link href={`/clientes/${factura.idCliente}`} className="hover:underline">
+                      {factura.razonSocialCliente}
+                    </Link>
+                  ) : (
+                    factura.razonSocialCliente
+                  )}
                   <div className="mt-1">
                     <InsigniaSituacion situacion={situacion} vencida={dias > diasDeCredito} />
                   </div>
