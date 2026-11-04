@@ -10,9 +10,8 @@ import { formatearNombreMesYAnio } from "../src/datos/meses.ts";
 import { parametrosPlanilla } from "../src/datos/parametros.ts";
 import { buscarCuenta } from "../src/datos/plan-cuentas.ts";
 import { crearEstadoInicial } from "../src/datos/semilla.ts";
-import { asientoDePlanilla, crearAsiento, totalesDeAsiento } from "../src/lib/contabilidad.ts";
-import { calcularFilaPlanilla, totalesParaAsiento, totalesPlanilla } from "../src/lib/planilla.ts";
-import { diasSinGoceEnMes } from "../src/lib/vacaciones.ts";
+import { crearAsiento, totalesDeAsiento } from "../src/lib/contabilidad.ts";
+import { borradorAsientoPlanilla, calcularPlanillaDelMes, totalesPlanilla } from "../src/lib/planilla.ts";
 
 const hoy = fechaDeHoy();
 const mes = process.argv[2] ?? mesDeFecha(hoy);
@@ -21,31 +20,34 @@ const estado = crearEstadoInicial(hoy);
 const importe = (monto: number) => monto.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const columna = (texto: string | number, ancho: number) => String(texto).padStart(ancho);
 
+// Si el mes ya está cerrado en los datos de ejemplo, se muestra tal como se cerró.
+const cerrada = estado.planillas.find((planilla) => planilla.mes === mes);
+const filas = cerrada ? cerrada.filas : calcularPlanillaDelMes(estado.personas, estado.permisos, mes);
+if (cerrada) console.log(`Cerrada el ${cerrada.fechaCierre}: se muestra tal como se cerró.
+`);
 console.log(`Planilla de ${formatearNombreMesYAnio(mes)} · salario mínimo Bs ${importe(parametrosPlanilla.salarioMinimoNacional)}\n`);
 console.log(
-  ["Persona".padEnd(30), "Años", "Básico", "Sin goce", "Bono", "T. ganado", "AFP", "RC-IVA", "Líquido", "Patronal"]
+  ["Persona".padEnd(30), "Años", "Básico", "No pagado", "Bono", "T. ganado", "Aportes", "RC-IVA", "Líquido", "Patronal"]
     .map((texto, indice) => (indice === 0 ? texto : columna(texto, indice === 1 ? 4 : 10)))
     .join(" "),
 );
 
-const filas = estado.personas.map((persona) => {
-  const fila = calcularFilaPlanilla(persona, mes, diasSinGoceEnMes(persona.id, estado.permisos, mes));
+for (const fila of filas) {
   console.log(
     [
-      `${persona.nombres} ${persona.apellidos}`.slice(0, 30).padEnd(30),
+      fila.nombreCompleto.slice(0, 30).padEnd(30),
       columna(fila.aniosServicio, 4),
       columna(importe(fila.haberBasico), 10),
-      columna(fila.diasSinGoce ? `-${importe(fila.descuentoSinGoce)}` : "-", 10),
+      columna(fila.descuentoDiasNoPagados ? `-${importe(fila.descuentoDiasNoPagados)}` : "-", 10),
       columna(`${importe(fila.bonoAntiguedad)}`, 10),
       columna(importe(fila.totalGanado), 10),
-      columna(importe(fila.aporteAfp + fila.aporteNacionalSolidario), 10),
+      columna(importe(fila.aporteLaboral + fila.aporteNacionalSolidario), 10),
       columna(importe(fila.rcIva), 10),
       columna(importe(fila.liquidoPagable), 10),
       columna(importe(fila.aportesPatronales.total), 10),
     ].join(" "),
   );
-  return fila;
-});
+}
 
 const totales = totalesPlanilla(filas);
 console.log(
@@ -55,11 +57,9 @@ console.log(
   `Aportes patronales Bs ${importe(totales.aportesPatronales)} · aguinaldo Bs ${importe(totales.provisionAguinaldo)} · indemnización Bs ${importe(totales.provisionIndemnizacion)}`,
 );
 
-const asiento = crearAsiento(
-  asientoDePlanilla({ idPlanilla: `pla-${mes}`, nombreMes: formatearNombreMesYAnio(mes), fecha: hoy, totales: totalesParaAsiento(filas) }),
-  estado.asientos,
-  hoy,
-);
+const asiento = cerrada
+  ? estado.asientos.find((item) => item.id === cerrada.idAsiento)!
+  : crearAsiento(borradorAsientoPlanilla(mes, filas), estado.asientos, hoy);
 console.log(`\nAsiento N° ${asiento.numero}: ${asiento.glosa}`);
 for (const linea of asiento.lineas) {
   const nombre = `${linea.codigoCuenta} ${buscarCuenta(linea.codigoCuenta)?.nombre ?? ""}`.slice(0, 52).padEnd(52);

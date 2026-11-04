@@ -144,3 +144,22 @@
     @apply font-sans;
   }
 }
+/* Al imprimir (por ejemplo, una boleta de pago) solo sale el contenido. Lo que
+   no debe imprimirse lleva la clase print:hidden. */
+@media print {
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"] {
+    display: none !important;
+  }
+  [data-slot="sidebar-inset"] {
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+  body {
+    background: white;
+  }
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}

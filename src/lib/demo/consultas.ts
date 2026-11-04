@@ -1,6 +1,8 @@
 import { etapasAbiertas } from "@/datos/catalogos";
 import { personaPorRol } from "@/datos/equipo";
-import type { Cliente, EstadoDemo, Oportunidad, Seguimiento } from "@/datos/tipos";
+import { mesDeFecha } from "@/datos/fechas";
+import type { Cliente, EstadoDemo, FilaPlanilla, Oportunidad, PlanillaCerrada, Seguimiento } from "@/datos/tipos";
+import { calcularPlanillaDelMes, totalesPlanilla } from "@/lib/planilla";
 
 // Consultas derivadas del estado de la demo. Son funciones puras: las pantallas
 // las llaman con el estado actual y React Compiler se encarga de memorizarlas.
@@ -72,4 +74,30 @@ export function seguimientosPendientes(estado: EstadoDemo): Seguimiento[] {
 
 export function clientePorId(estado: EstadoDemo, idCliente: string) {
   return estado.clientes.find((cliente) => cliente.id === idCliente);
+}
+
+// --- Planilla ---
+
+export interface PlanillaDelMes {
+  mes: string;
+  // null mientras el mes sigue abierto: las filas se calculan con los datos de hoy.
+  cerrada: PlanillaCerrada | null;
+  filas: FilaPlanilla[];
+  totales: ReturnType<typeof totalesPlanilla>;
+}
+
+export function planillaDelMes(estado: EstadoDemo, mes: string): PlanillaDelMes {
+  const cerrada = estado.planillas.find((planilla) => planilla.mes === mes) ?? null;
+  const filas = cerrada ? cerrada.filas : calcularPlanillaDelMes(estado.personas, estado.permisos, mes);
+  return { mes, cerrada, filas, totales: totalesPlanilla(filas) };
+}
+
+// Meses con planilla: el en curso (cerrado o no) y los cerrados, del más reciente al más antiguo.
+export function mesesConPlanilla(estado: EstadoDemo, hoy: string) {
+  const meses = new Set([mesDeFecha(hoy), ...estado.planillas.map((planilla) => planilla.mes)]);
+  return [...meses].sort((a, b) => b.localeCompare(a));
+}
+
+export function asientoPorId(estado: EstadoDemo, idAsiento: string) {
+  return estado.asientos.find((asiento) => asiento.id === idAsiento);
 }

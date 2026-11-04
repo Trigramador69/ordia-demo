@@ -28,7 +28,7 @@ export function MarcoPanel({ children }: { children: React.ReactNode }) {
       {/* min-w-0: sin esto, una tabla ancha estira el área de contenido y la página
           se desplaza hacia los costados, por debajo del menú lateral. */}
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80">
+        <header className="sticky top-0 z-10 flex print:hidden h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80">
           <SidebarTrigger className="-ml-1" />
           <span aria-hidden="true" className="mr-1 h-4 w-px bg-border" />
           <span className="truncate text-sm font-medium">{seccion?.titulo ?? "Ordia"}</span>
@@ -36,7 +36,7 @@ export function MarcoPanel({ children }: { children: React.ReactNode }) {
             <SelectorRol />
           </div>
         </header>
-        <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8">{contenido}</div>
+        <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8 print:p-0">{contenido}</div>
       </SidebarInset>
     </SidebarProvider>
   );

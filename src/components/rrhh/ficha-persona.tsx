@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, CalendarCheck2, CalendarMinus, CalendarPlus } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, CalendarMinus, CalendarPlus, FileText } from "lucide-react";
 import { DialogoDiaLibre, DialogoPermiso } from "@/components/rrhh/dialogos-dias-libres-permisos";
 import { DialogoSolicitudVacacion } from "@/components/rrhh/dialogo-solicitud-vacacion";
 import { InsigniaAusencia, InsigniaEstadoSolicitud, formatearRango } from "@/components/rrhh/insignias";
@@ -15,17 +15,19 @@ import { nombresArea, nombresTipoContrato, nombresTipoPermiso } from "@/datos/ca
 import { diferenciaEnDias, mesDeFecha } from "@/datos/fechas";
 import type { Persona } from "@/datos/tipos";
 import { useEstadoDemo } from "@/lib/demo/almacen";
-import { ausenciaEnFecha } from "@/lib/demo/consultas";
+import { ausenciaEnFecha, mesesConPlanilla, planillaDelMes } from "@/lib/demo/consultas";
 import {
   calcularEdad,
   fechaDeHoy,
   formatearAntiguedad,
   formatearFecha,
+  formatearMes,
   formatearMonto,
   iniciales,
   nombreCompleto,
   pluralizar,
 } from "@/lib/formato";
+import { puedeVerRuta } from "@/lib/navegacion";
 import { calcularFilaPlanilla } from "@/lib/planilla";
 import { resumenPermisos, resumenVacaciones, saldoDiasLibres } from "@/lib/vacaciones";
 import { cn } from "@/lib/utils";
@@ -271,6 +273,8 @@ function ContenidoFicha({ persona, enlaceVolver }: { persona: Persona; enlaceVol
               )}
             </Card>
           </div>
+
+          <BoletasDePago persona={persona} />
         </div>
       </div>
 
@@ -278,6 +282,52 @@ function ContenidoFicha({ persona, enlaceVolver }: { persona: Persona; enlaceVol
       <DialogoDiaLibre idPersonaFija={persona.id} abierto={dialogoDiaLibre} alCambiarAbierto={setDialogoDiaLibre} />
       <DialogoPermiso idPersonaFija={persona.id} abierto={dialogoPermiso} alCambiarAbierto={setDialogoPermiso} />
     </>
+  );
+}
+
+// Boletas de los meses cerrados y la del mes en curso, que todavía es una vista previa.
+function BoletasDePago({ persona }: { persona: Persona }) {
+  const estado = useEstadoDemo();
+  const hoy = fechaDeHoy();
+  const boletas = mesesConPlanilla(estado, hoy).flatMap((mes) => {
+    const planilla = planillaDelMes(estado, mes);
+    const fila = planilla.filas.find((item) => item.idPersona === persona.id);
+    return fila ? [{ mes, fila, cerrada: planilla.cerrada !== null }] : [];
+  });
+  const puedeVerPlanilla = puedeVerRuta(estado.rol, "/planilla");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Boletas de pago</CardTitle>
+        <CardDescription>
+          {boletas.length === 0 ? "Todavía no figura en ninguna planilla." : "Una por mes, desde la planilla de cada mes."}
+        </CardDescription>
+      </CardHeader>
+      {boletas.length > 0 && (
+        <CardContent>
+          <ul className="flex flex-col divide-y">
+            {boletas.map(({ mes, fila, cerrada }) => (
+              <li key={mes} className="flex flex-wrap items-center justify-between gap-3 py-2.5 text-sm first:pt-0 last:pb-0">
+                <span className="flex items-center gap-2">
+                  <FileText className="size-4 text-muted-foreground" />
+                  <span className="font-medium">{formatearMes(mes)}</span>
+                  {!cerrada && <Badge className="bg-advertencia-suave text-advertencia">Por cerrar</Badge>}
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="text-muted-foreground tabular-nums">Líquido {formatearMonto(fila.liquidoPagable)}</span>
+                  {puedeVerPlanilla && (
+                    <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/planilla/${mes}/${persona.id}`} />}>
+                      Ver boleta
+                    </Button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      )}
+    </Card>
   );
 }
 

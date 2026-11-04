@@ -1,39 +1,15 @@
-import { aniosCumplidos, ultimoDiaDelMes } from "../datos/fechas.ts";
+import { aniosCumplidos, primerDiaDelMes, ultimoDiaDelMes } from "../datos/fechas.ts";
+import { formatearNombreMesYAnio } from "../datos/meses.ts";
 import { parametrosPlanilla as p } from "../datos/parametros.ts";
-import type { Persona } from "../datos/tipos.ts";
-import { aCentavos, redondear, type TotalesParaAsientoPlanilla } from "./contabilidad.ts";
+import type { FilaPlanilla, Permiso, Persona } from "../datos/tipos.ts";
+import { aCentavos, asientoDePlanilla, redondear, type BorradorAsiento, type TotalesParaAsientoPlanilla } from "./contabilidad.ts";
+import { diasSinGoceEnMes } from "./vacaciones.ts";
 
 // Cálculo de la planilla de sueldos de un mes. Todos los porcentajes y montos
 // legales salen de src/datos/parametros.ts: aquí solo está la lógica.
 // Importa con extensión .ts porque también lo ejecuta Node desde scripts/.
 
-export interface FilaPlanilla {
-  idPersona: string;
-  aniosServicio: number;
-  haberBasico: number;
-  diasSinGoce: number;
-  diasPagados: number;
-  descuentoSinGoce: number;
-  haberBasicoGanado: number;
-  porcentajeBono: number;
-  bonoAntiguedad: number;
-  totalGanado: number;
-  aporteAfp: number;
-  aporteNacionalSolidario: number;
-  rcIva: number;
-  totalDescuentos: number;
-  liquidoPagable: number;
-  // A cargo de la empresa: no se descuentan al trabajador.
-  aportesPatronales: {
-    cajaDeSalud: number;
-    riesgoProfesional: number;
-    solidario: number;
-    vivienda: number;
-    total: number;
-  };
-  provisionAguinaldo: number;
-  provisionIndemnizacion: number;
-}
+export type { FilaPlanilla };
 
 export function porcentajeBonoAntiguedad(anios: number) {
   let porcentaje = 0;
@@ -57,26 +33,34 @@ export function calcularRcIva(totalGanado: number, aportesLaborales: number) {
   return Math.max(0, impuesto - computoAFavor);
 }
 
+// Días de un mes comercial (30) anteriores al ingreso, si la persona entró ese mes.
+export function diasAntesDelIngreso(fechaIngreso: string, mes: string) {
+  if (fechaIngreso <= primerDiaDelMes(mes) || fechaIngreso > ultimoDiaDelMes(mes)) return 0;
+  return Math.min(p.diasDelMesComercial, Number(fechaIngreso.slice(8, 10)) - 1);
+}
+
 // La antigüedad que cuenta para el bono es la cumplida al cierre del mes.
 export function calcularFilaPlanilla(persona: Persona, mes: string, diasSinGoce: number): FilaPlanilla {
   const aniosServicio = aniosCumplidos(persona.fechaIngreso, ultimoDiaDelMes(mes));
   const diasMes = p.diasDelMesComercial;
-  const diasDescontados = Math.min(diasMes, diasSinGoce);
-  const proporcion = (diasMes - diasDescontados) / diasMes;
+  const antesDelIngreso = diasAntesDelIngreso(persona.fechaIngreso, mes);
+  const sinGoce = Math.min(diasMes - antesDelIngreso, diasSinGoce);
+  const diasPagados = diasMes - antesDelIngreso - sinGoce;
+  const proporcion = diasPagados / diasMes;
 
   const haberBasico = persona.sueldoBasico;
   const haberBasicoGanado = redondear(haberBasico * proporcion);
-  const descuentoSinGoce = redondear(haberBasico - haberBasicoGanado);
+  const descuentoDiasNoPagados = redondear(haberBasico - haberBasicoGanado);
 
   const porcentajeBono = porcentajeBonoAntiguedad(aniosServicio);
   const bonoCompleto = (p.bonoAntiguedad.salariosMinimosBase * p.salarioMinimoNacional * porcentajeBono) / 100;
   const bonoAntiguedad = redondear(p.descontarSinGoceDelBono ? bonoCompleto * proporcion : bonoCompleto);
 
   const totalGanado = redondear(haberBasicoGanado + bonoAntiguedad);
-  const aporteAfp = redondear(totalGanado * p.aporteLaboralAfp);
+  const aporteLaboral = redondear(totalGanado * p.aporteLaboralAfp);
   const aporteNacionalSolidario = redondear(calcularAporteNacionalSolidario(totalGanado));
-  const rcIva = redondear(calcularRcIva(totalGanado, aporteAfp + aporteNacionalSolidario));
-  const totalDescuentos = redondear(aporteAfp + aporteNacionalSolidario + rcIva);
+  const rcIva = redondear(calcularRcIva(totalGanado, aporteLaboral + aporteNacionalSolidario));
+  const totalDescuentos = redondear(aporteLaboral + aporteNacionalSolidario + rcIva);
   const liquidoPagable = redondear(totalGanado - totalDescuentos);
 
   const patronal = p.aportesPatronales;
@@ -87,16 +71,22 @@ export function calcularFilaPlanilla(persona: Persona, mes: string, diasSinGoce:
 
   return {
     idPersona: persona.id,
+    nombreCompleto: `${persona.nombres} ${persona.apellidos}`,
+    carnetIdentidad: persona.carnetIdentidad,
+    cargo: persona.cargo,
+    fechaIngreso: persona.fechaIngreso,
+    cuentaBancaria: persona.cuentaBancaria,
     aniosServicio,
     haberBasico,
-    diasSinGoce: diasDescontados,
-    diasPagados: diasMes - diasDescontados,
-    descuentoSinGoce,
+    diasSinGoce: sinGoce,
+    diasAntesDelIngreso: antesDelIngreso,
+    diasPagados,
+    descuentoDiasNoPagados,
     haberBasicoGanado,
     porcentajeBono,
     bonoAntiguedad,
     totalGanado,
-    aporteAfp,
+    aporteLaboral,
     aporteNacionalSolidario,
     rcIva,
     totalDescuentos,
@@ -113,31 +103,44 @@ export function calcularFilaPlanilla(persona: Persona, mes: string, diasSinGoce:
   };
 }
 
+// La planilla de un mes con los datos actuales: todas las personas que ya
+// habían ingresado al cierre del mes, con sus días sin goce de haber.
+export function calcularPlanillaDelMes(personas: Persona[], permisos: Permiso[], mes: string): FilaPlanilla[] {
+  const cierre = ultimoDiaDelMes(mes);
+  return personas
+    .filter((persona) => persona.fechaIngreso <= cierre)
+    .map((persona) => calcularFilaPlanilla(persona, mes, diasSinGoceEnMes(persona.id, permisos, mes)));
+}
+
 // Suma en centavos, para que los totales cuadren exacto con las filas.
 function sumar(filas: FilaPlanilla[], valor: (fila: FilaPlanilla) => number) {
   return filas.reduce((suma, fila) => suma + aCentavos(valor(fila)), 0) / 100;
 }
 
 export function totalesPlanilla(filas: FilaPlanilla[]) {
-  return {
+  const totales = {
     haberBasico: sumar(filas, (fila) => fila.haberBasico),
-    descuentoSinGoce: sumar(filas, (fila) => fila.descuentoSinGoce),
+    descuentoDiasNoPagados: sumar(filas, (fila) => fila.descuentoDiasNoPagados),
     haberBasicoGanado: sumar(filas, (fila) => fila.haberBasicoGanado),
     bonoAntiguedad: sumar(filas, (fila) => fila.bonoAntiguedad),
     totalGanado: sumar(filas, (fila) => fila.totalGanado),
-    aporteAfp: sumar(filas, (fila) => fila.aporteAfp),
+    aporteLaboral: sumar(filas, (fila) => fila.aporteLaboral),
     aporteNacionalSolidario: sumar(filas, (fila) => fila.aporteNacionalSolidario),
     rcIva: sumar(filas, (fila) => fila.rcIva),
     totalDescuentos: sumar(filas, (fila) => fila.totalDescuentos),
     liquidoPagable: sumar(filas, (fila) => fila.liquidoPagable),
     cajaDeSalud: sumar(filas, (fila) => fila.aportesPatronales.cajaDeSalud),
-    aportesPatronalesAfp: sumar(
-      filas,
-      (fila) => fila.aportesPatronales.riesgoProfesional + fila.aportesPatronales.solidario + fila.aportesPatronales.vivienda,
-    ),
+    riesgoProfesional: sumar(filas, (fila) => fila.aportesPatronales.riesgoProfesional),
+    solidario: sumar(filas, (fila) => fila.aportesPatronales.solidario),
+    vivienda: sumar(filas, (fila) => fila.aportesPatronales.vivienda),
     aportesPatronales: sumar(filas, (fila) => fila.aportesPatronales.total),
     provisionAguinaldo: sumar(filas, (fila) => fila.provisionAguinaldo),
     provisionIndemnizacion: sumar(filas, (fila) => fila.provisionIndemnizacion),
+  };
+  return {
+    ...totales,
+    // Lo que le cuesta el mes a la empresa: sueldos, aportes y provisiones.
+    costoEmpresa: redondear(totales.totalGanado + totales.aportesPatronales + totales.provisionAguinaldo + totales.provisionIndemnizacion),
   };
 }
 
@@ -147,12 +150,25 @@ export function totalesParaAsiento(filas: FilaPlanilla[]): TotalesParaAsientoPla
   return {
     haberBasicoGanado: totales.haberBasicoGanado,
     bonoAntiguedad: totales.bonoAntiguedad,
-    aporteLaboral: redondear(totales.aporteAfp + totales.aporteNacionalSolidario),
+    aporteLaboral: redondear(totales.aporteLaboral + totales.aporteNacionalSolidario),
     rcIva: totales.rcIva,
     liquidoPagable: totales.liquidoPagable,
     aportePatronalCajaDeSalud: totales.cajaDeSalud,
-    aportesPatronalesAfp: totales.aportesPatronalesAfp,
+    aportesPatronalesAfp: redondear(totales.riesgoProfesional + totales.solidario + totales.vivienda),
     provisionAguinaldo: totales.provisionAguinaldo,
     provisionIndemnizacion: totales.provisionIndemnizacion,
   };
+}
+
+export const idPlanillaDelMes = (mes: string) => `pla-${mes}`;
+
+// El asiento de la planilla va con fecha del último día del mes: es el gasto
+// devengado en ese mes, aunque se cierre antes o después.
+export function borradorAsientoPlanilla(mes: string, filas: FilaPlanilla[]): BorradorAsiento {
+  return asientoDePlanilla({
+    idPlanilla: idPlanillaDelMes(mes),
+    nombreMes: formatearNombreMesYAnio(mes),
+    fecha: ultimoDiaDelMes(mes),
+    totales: totalesParaAsiento(filas),
+  });
 }

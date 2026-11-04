@@ -78,6 +78,57 @@ export interface Permiso {
   fechaRegistro: string;
 }
 
+// --- Planilla ---
+
+// Una persona en la planilla de un mes. Lleva una copia de sus datos para que
+// la boleta de un mes cerrado no cambie si después cambia el cargo o el sueldo.
+export interface FilaPlanilla {
+  idPersona: string;
+  nombreCompleto: string;
+  carnetIdentidad: string;
+  cargo: string;
+  fechaIngreso: string;
+  cuentaBancaria: string;
+  aniosServicio: number;
+  haberBasico: number;
+  diasSinGoce: number;
+  // Días del mes anteriores a la fecha de ingreso (si entró en ese mes).
+  diasAntesDelIngreso: number;
+  diasPagados: number;
+  // Descuento por los días no pagados: sin goce de haber o antes del ingreso.
+  descuentoDiasNoPagados: number;
+  haberBasicoGanado: number;
+  porcentajeBono: number;
+  bonoAntiguedad: number;
+  totalGanado: number;
+  aporteLaboral: number;
+  aporteNacionalSolidario: number;
+  rcIva: number;
+  totalDescuentos: number;
+  liquidoPagable: number;
+  // A cargo de la empresa: no se descuentan al trabajador.
+  aportesPatronales: {
+    cajaDeSalud: number;
+    riesgoProfesional: number;
+    solidario: number;
+    vivienda: number;
+    total: number;
+  };
+  provisionAguinaldo: number;
+  provisionIndemnizacion: number;
+}
+
+// Planilla cerrada: queda fija con sus filas y el asiento que generó.
+export interface PlanillaCerrada {
+  id: string;
+  // "2026-10"
+  mes: string;
+  fechaCierre: string;
+  idCerradoPor: string;
+  filas: FilaPlanilla[];
+  idAsiento: string;
+}
+
 // --- CRM ---
 
 export type EstadoCliente = "prospecto" | "activo" | "inactivo";
@@ -227,6 +278,7 @@ export interface EstadoDemo {
   solicitudesVacacion: SolicitudVacacion[];
   movimientosDiasLibres: MovimientoDiaLibre[];
   permisos: Permiso[];
+  planillas: PlanillaCerrada[];
   clientes: Cliente[];
   contactos: Contacto[];
   oportunidades: Oportunidad[];

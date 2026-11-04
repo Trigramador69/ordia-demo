@@ -23,12 +23,13 @@ Abre en http://localhost:3000.
 | `src/datos/` (resto) | Catálogos, feriados y generadores de los datos de ejemplo |
 | `src/lib/contabilidad.ts` | Modelo de asiento: validación, numeración, saldos y asientos automáticos |
 | `src/lib/vacaciones.ts` | Vacaciones por antigüedad, saldos de días libres y permisos |
-| `src/lib/planilla.ts` | Cálculo de la planilla: bono de antigüedad, AFP, RC-IVA, aportes patronales y provisiones |
+| `src/lib/planilla.ts` | Cálculo de la planilla: bono de antigüedad, aportes, RC-IVA, aportes patronales, provisiones y su asiento |
+| `src/lib/pdf.ts`, `src/lib/boleta-pdf.ts` | Generador de PDF de una página (funciona en el navegador y en Node) y la boleta de pago |
 | `src/lib/demo/almacen.ts` | Estado de la demo en `localStorage`, sincronizado entre pestañas |
 | `src/lib/navegacion.ts` | Módulos, pantallas y qué rol ve cada una |
 | `src/components/` | Componentes de pantalla; `ui/` son los de shadcn/ui |
 | `src/app/(panel)/` | Las pantallas |
-| `scripts/` | Revisión de la planilla en consola y generador de PDF de una página (base de las boletas) |
+| `scripts/` | Revisión de la planilla en consola |
 
 ## Revisar la planilla con un contador
 
@@ -37,7 +38,7 @@ pnpm revisar:planilla           # mes en curso
 pnpm revisar:planilla 2026-10   # otro mes
 ```
 
-Imprime la planilla de los datos de ejemplo concepto por concepto y el asiento que genera al cerrarse. Los porcentajes y montos salen de `src/datos/parametros.ts`: si algo no coincide, se corrige ahí.
+Imprime la planilla de los datos de ejemplo concepto por concepto y el asiento que genera al cerrarse (si el mes ya está cerrado, la muestra tal como se cerró). Los porcentajes y montos salen de `src/datos/parametros.ts`: si algo no coincide, se corrige ahí.
 
 ## Datos de ejemplo
 

@@ -1,8 +1,10 @@
 "use client";
 
 import { contarDiasHabiles } from "@/datos/feriados";
-import type { MovimientoDiaLibre, Permiso, SolicitudVacacion } from "@/datos/tipos";
-import { actualizarEstado } from "@/lib/demo/almacen";
+import type { MovimientoDiaLibre, Permiso, PlanillaCerrada, SolicitudVacacion } from "@/datos/tipos";
+import { crearAsiento } from "@/lib/contabilidad";
+import { actualizarEstado, obtenerEstado } from "@/lib/demo/almacen";
+import { borradorAsientoPlanilla, calcularPlanillaDelMes, idPlanillaDelMes } from "@/lib/planilla";
 import { fechaDeHoy } from "@/lib/formato";
 
 // Cambios que se pueden hacer durante la demo. Todos pasan por actualizarEstado,
@@ -81,4 +83,36 @@ export function registrarPermiso(datos: Omit<Permiso, "id" | "diasHabiles" | "fe
     fechaRegistro: fechaDeHoy(),
   };
   actualizarEstado((estado) => ({ ...estado, permisos: [...estado.permisos, permiso] }));
+}
+
+// --- Planilla ---
+
+// Cierra la planilla del mes: la deja fija con los datos de hoy y registra su
+// asiento contable. Devuelve el asiento creado y una función para deshacerlo
+// (solo para el instante siguiente al cierre, desde el aviso).
+export function cerrarPlanilla(mes: string, idCerradoPor: string) {
+  const estadoActual = obtenerEstado();
+  if (estadoActual.planillas.some((planilla) => planilla.mes === mes)) throw new Error("La planilla de ese mes ya está cerrada.");
+  const filas = calcularPlanillaDelMes(estadoActual.personas, estadoActual.permisos, mes);
+  const asiento = crearAsiento(borradorAsientoPlanilla(mes, filas), estadoActual.asientos, fechaDeHoy());
+  const planilla: PlanillaCerrada = {
+    id: idPlanillaDelMes(mes),
+    mes,
+    fechaCierre: fechaDeHoy(),
+    idCerradoPor,
+    filas,
+    idAsiento: asiento.id,
+  };
+  actualizarEstado((estado) => ({
+    ...estado,
+    planillas: [...estado.planillas, planilla],
+    asientos: [...estado.asientos, asiento],
+  }));
+  const deshacer = () =>
+    actualizarEstado((estado) => ({
+      ...estado,
+      planillas: estado.planillas.filter((item) => item.id !== planilla.id),
+      asientos: estado.asientos.filter((item) => item.id !== asiento.id),
+    }));
+  return { asiento, deshacer };
 }
