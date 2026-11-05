@@ -329,7 +329,8 @@ export function anularFactura(idFactura: string, motivo: string) {
   const reverso = crearAsiento(
     asientoDeAnulacion(original, {
       fecha,
-      glosa: `Anulación de la factura N° ${factura.numero} a ${factura.razonSocialCliente}. Motivo: ${motivo.toLowerCase()}`,
+      // Si la razón social termina en abreviatura ("S.R.L."), su punto cierra la frase.
+      glosa: `Anulación de la factura N° ${factura.numero} a ${factura.razonSocialCliente}${factura.razonSocialCliente.endsWith(".") ? "" : "."} Motivo: ${motivo.toLowerCase()}`,
     }),
     estadoActual.asientos,
     fecha,

@@ -94,7 +94,7 @@ export function VistaPlanilla() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Cifra titulo="Total ganado" valor={totales.totalGanado} detalle={`Haber básico y bono de antigüedad (${formatearMonto(totales.bonoAntiguedad)})`} />
+        <Cifra titulo="Total ganado" valor={totales.totalGanado} detalle={`Haber básico ganado ${formatearMonto(totales.totalGanado - totales.bonoAntiguedad)} · bono de antigüedad ${formatearMonto(totales.bonoAntiguedad)}`} />
         <Cifra
           titulo="Descuentos"
           valor={totales.totalDescuentos}
@@ -104,7 +104,7 @@ export function VistaPlanilla() {
         <Cifra
           titulo="Costo para la empresa"
           valor={totales.costoEmpresa}
-          detalle={`Con aportes patronales (${formatearMonto(totales.aportesPatronales)}) y provisiones`}
+          detalle={`Total ganado, aportes patronales ${formatearMonto(totales.aportesPatronales)} y provisiones`}
         />
       </div>
 
@@ -119,7 +119,7 @@ export function VistaPlanilla() {
               <TableHead className="text-right">Total ganado</TableHead>
               <TableHead className="hidden text-right xl:table-cell">Aportes laborales</TableHead>
               <TableHead className="hidden text-right xl:table-cell">RC-IVA</TableHead>
-              <TableHead className="hidden text-right sm:table-cell">Descuentos</TableHead>
+              <TableHead className="hidden text-right sm:table-cell xl:hidden 2xl:table-cell">Descuentos</TableHead>
               <TableHead className="text-right">Líquido pagable</TableHead>
               <TableHead className="w-10 pr-4" />
             </TableRow>
@@ -156,7 +156,7 @@ export function VistaPlanilla() {
                   )}
                 </TableCell>
                 <TableCell className="hidden text-right tabular-nums xl:table-cell">{fila.rcIva > 0 ? formatearImporte(fila.rcIva) : "-"}</TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">{formatearImporte(fila.totalDescuentos)}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell xl:hidden 2xl:table-cell">{formatearImporte(fila.totalDescuentos)}</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{formatearImporte(fila.liquidoPagable)}</TableCell>
                 <TableCell className="pr-4">
                   <Button
@@ -182,7 +182,7 @@ export function VistaPlanilla() {
                 {formatearImporte(totales.aporteLaboral + totales.aporteNacionalSolidario)}
               </TableCell>
               <TableCell className="hidden text-right tabular-nums xl:table-cell">{formatearImporte(totales.rcIva)}</TableCell>
-              <TableCell className="hidden text-right tabular-nums sm:table-cell">{formatearImporte(totales.totalDescuentos)}</TableCell>
+              <TableCell className="hidden text-right tabular-nums sm:table-cell xl:hidden 2xl:table-cell">{formatearImporte(totales.totalDescuentos)}</TableCell>
               <TableCell className="text-right font-semibold tabular-nums">{formatearImporte(totales.liquidoPagable)}</TableCell>
               <TableCell className="pr-4" />
             </TableRow>

@@ -15,7 +15,7 @@ import { formatearNombreMesYAnio } from "./meses.ts";
 import type { Asiento, Cobro, DepreciacionDelMes, EstadoDemo, Factura, PlanillaCerrada } from "./tipos.ts";
 
 // Cambiar esta versión descarta lo guardado en los navegadores y vuelve a la semilla.
-export const versionEstadoDemo = 6;
+export const versionEstadoDemo = 7;
 
 // Cada parte usa su propia semilla para que un cambio en una no altere las demás.
 // Las fechas salen de `hoy`: con la misma fecha, los datos salen idénticos.

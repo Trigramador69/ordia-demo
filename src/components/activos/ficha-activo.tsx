@@ -69,7 +69,8 @@ function Contenido({ activo, enlaceVolver }: { activo: Activo; enlaceVolver: str
   // El cuadro llega hasta el mes en curso; lo posterior al último mes registrado queda "por registrar".
   const cuadro = cuadroDeDepreciacion(activo, mesActual);
   const libro = valorEnLibros(activo, hastaMes);
-  const historial = [...activo.historial].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  // Del más reciente al más antiguo; en el mismo día, el último registrado primero.
+  const historial = [...activo.historial].reverse().sort((a, b) => b.fecha.localeCompare(a.fecha));
 
   return (
     <>

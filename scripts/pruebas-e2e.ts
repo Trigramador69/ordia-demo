@@ -191,6 +191,13 @@ async function recorrerPantallas(navegador: Browser) {
       afirmar(!/Application error|Unhandled Runtime Error|No encontramos/.test(contenido), "La pantalla muestra un error");
       const desborde = await pagina.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       afirmar(desborde <= 1, `Desborde horizontal de ${desborde}px`);
+      // A 1366 px, con el menú abierto, ninguna tabla debería necesitar desplazarse de costado.
+      const tablasAnchas = await pagina.evaluate(() =>
+        Array.from(document.querySelectorAll("main table"))
+          .map((tabla) => tabla.scrollWidth - (tabla.parentElement?.clientWidth ?? tabla.scrollWidth))
+          .filter((exceso) => exceso > 0),
+      );
+      afirmar(tablasAnchas.length === 0, `Tabla más ancha que su tarjeta por ${tablasAnchas.join(", ")}px`);
       afirmar(erroresDeConsola.length === antes, `Errores de consola: ${erroresDeConsola.slice(antes).join(" | ")}`);
     });
   }

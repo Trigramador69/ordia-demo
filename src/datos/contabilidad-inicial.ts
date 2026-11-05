@@ -25,9 +25,9 @@ const gastosFijos: { dia: number; cuenta: string; glosa: string; monto: [number,
 
 // Alcanza para varios meses de sueldos: en el periodo solo entran los cobros
 // de las facturas de los últimos meses.
-const saldoInicialBanco = 650000;
+const saldoInicialBanco = 180000;
 const saldoInicialCaja = 5000;
-const capitalSocial = 500000;
+const capitalSocial = 300000;
 
 // Saldos iniciales: disponible, los activos fijos al costo con su depreciación
 // acumulada, y el patrimonio que los equilibra. Los activos comprados dentro

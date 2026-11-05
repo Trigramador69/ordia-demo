@@ -144,7 +144,7 @@ function Bloque({ titulo, filas, total }: { titulo: string; filas: [string, numb
     <div className="flex flex-col text-sm">
       <div className="flex justify-between rounded-md bg-marca-suave px-3 py-1.5 text-xs font-semibold text-primary uppercase">
         <span>{titulo}</span>
-        <span>Bs</span>
+        <span className="normal-case">Bs</span>
       </div>
       <dl className="flex flex-1 flex-col gap-1.5 px-3 py-3">
         {filas.map(([concepto, monto]) => (

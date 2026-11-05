@@ -30,7 +30,7 @@ export function CalendarioEquipo() {
         <CardTitle>Calendario del equipo</CardTitle>
         <CardDescription>
           {formatearMes(mes)}
-          {feriados.length > 0 && ` · Feriados: ${feriados.map((feriado) => `${Number(feriado.fecha.slice(8))} (${feriado.nombre})`).join(", ")}`}
+          {feriados.length > 0 && ` · ${feriados.length === 1 ? "Feriado" : "Feriados"}: ${feriados.map((feriado) => `${feriado.nombre} (día ${Number(feriado.fecha.slice(8))})`).join(", ")}`}
         </CardDescription>
         <CardAction className="flex items-center gap-1">
           <Button variant="outline" size="icon-sm" aria-label="Mes anterior" onClick={() => setMes(sumarMesesAMes(mes, -1))}>

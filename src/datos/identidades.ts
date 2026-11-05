@@ -77,10 +77,20 @@ export function crearGeneradorIdentidades(aleatorio: Aleatorio) {
 
     const direccion = `${aleatorio.elegir(calles)} ${aleatorio.entero(100, 2400)}, zona ${aleatorio.elegir(zonasPorCiudad[ciudad])}`;
 
-    // El parentesco va con el género del nombre del contacto.
+    // El parentesco va con el género del nombre del contacto, y el apellido con
+    // el parentesco: el padre y los hermanos llevan el paterno; la madre, el
+    // materno; el cónyuge, uno propio; los hijos, el paterno del padre.
     const contactoMujer = aleatorio.probabilidad(0.5);
-    const nombreContacto = `${aleatorio.elegir(contactoMujer ? nombresFemeninos : nombresMasculinos).split(" ")[0]} ${apellidosCompletos.split(" ")[0]}`;
-    const contactoEmergencia = `${nombreContacto} (${aleatorio.elegir(parentescos[contactoMujer ? 0 : 1])}), ${crearTelefono(aleatorio)}`;
+    const nombreDelContacto = aleatorio.elegir(contactoMujer ? nombresFemeninos : nombresMasculinos).split(" ")[0];
+    const parentesco = aleatorio.elegir(parentescos[contactoMujer ? 0 : 1]);
+    const [paterno, materno] = apellidosCompletos.split(" ");
+    const otroApellido = apellidos.filter((apellido) => apellido !== paterno && apellido !== materno)[(apellidos.indexOf(materno) * 7) % (apellidos.length - 2)];
+    const apellidoDelContacto =
+      parentesco === "madre" ? materno
+      : parentesco === "esposa" || parentesco === "esposo" ? otroApellido
+      : (parentesco === "hija" || parentesco === "hijo") && mujer ? otroApellido
+      : paterno;
+    const contactoEmergencia = `${nombreDelContacto} ${apellidoDelContacto} (${parentesco}), ${crearTelefono(aleatorio)}`;
 
     return {
       nombres,

@@ -117,7 +117,7 @@ function Contenido({ cliente, enlaceVolver }: { cliente: Cliente; enlaceVolver: 
                 <Dato etiqueta="Dirección" valor={cliente.direccion} />
                 <Dato etiqueta="Teléfono" valor={cliente.telefono} />
                 <Dato etiqueta="Cómo llegó" valor={nombresOrigenCliente[cliente.origen]} />
-                <Dato etiqueta="Cliente desde" valor={formatearFecha(cliente.fechaAlta)} />
+                <Dato etiqueta="Registrado el" valor={formatearFecha(cliente.fechaAlta)} />
                 <Dato etiqueta="Vendido en total" valor={ganado > 0 ? formatearMonto(ganado) : "Todavía nada"} />
               </dl>
             </CardContent>

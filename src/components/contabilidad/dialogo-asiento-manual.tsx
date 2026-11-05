@@ -44,6 +44,34 @@ const opcionesCuenta = Object.fromEntries(
 
 const numero = (texto: string) => (texto.trim() === "" ? 0 : Number(texto.replace(",", ".")));
 
+const lineaVacia = (linea: LineaEditable) => linea.codigoCuenta === "" && linea.debe.trim() === "" && linea.haber.trim() === "";
+
+// Los errores de la validación, dichos para quien llena el formulario. Si
+// todavía no escribió nada, solo una indicación de qué completar.
+function mensajesDelFormulario(errores: string[], lineas: LineaEditable[], glosa: string, diferencia: number, cuadra: boolean) {
+  if (glosa.trim() === "" && lineas.every(lineaVacia)) {
+    return ["Escriba la glosa, elija las cuentas y ponga cada monto en el debe o en el haber."];
+  }
+  const mensajes = new Set<string>();
+  if (!cuadra) mensajes.add(`Diferencia entre debe y haber: ${formatearImporte(diferencia)}.`);
+  for (const error of errores) {
+    if (error.startsWith("El debe")) continue;
+    const enLinea = /^Línea (\d+): (.*)$/.exec(error);
+    if (!enLinea) {
+      mensajes.add(error);
+      continue;
+    }
+    const numeroLinea = Number(enLinea[1]);
+    const linea = lineas[numeroLinea - 1];
+    if (linea && lineaVacia(linea)) mensajes.add(`Línea ${numeroLinea}: está vacía; complétela o quítela.`);
+    else if (enLinea[2].includes("(vacía)")) mensajes.add(`Línea ${numeroLinea}: elija la cuenta.`);
+    else if (enLinea[2].startsWith("va en el debe") && linea?.debe.trim() === "" && linea.haber.trim() === "")
+      mensajes.add(`Línea ${numeroLinea}: escriba el monto en el debe o en el haber.`);
+    else mensajes.add(error);
+  }
+  return [...mensajes];
+}
+
 // Líneas de cada plantilla. El ingreso reparte el monto como lo hace el
 // asiento automático de una factura: ingreso, IVA e IT.
 function lineasDePlantilla(plantilla: Plantilla, monto: number): Omit<LineaEditable, "clave">[] {
@@ -126,7 +154,7 @@ function Formulario({ alTerminar }: { alTerminar: () => void }) {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
-        <div className="flex flex-col gap-2">
+        <div className={cn("flex flex-col gap-2", plantilla === "en_blanco" && "sm:col-span-2")}>
           <Label htmlFor="plantilla-asiento">Plantilla</Label>
           <SelectorSimple id="plantilla-asiento" opciones={nombresPlantilla} valor={plantilla} alCambiar={(valor) => aplicarPlantilla(valor)} />
         </div>
@@ -201,7 +229,7 @@ function Formulario({ alTerminar }: { alTerminar: () => void }) {
           </span>
         ) : (
           <ul className="flex flex-col gap-1">
-            {(cuadra ? errores : [`Diferencia entre debe y haber: ${formatearImporte(Math.abs(debe - haber))}.`, ...errores.filter((error) => !error.startsWith("El debe"))]).map((error) => (
+            {mensajesDelFormulario(errores, lineas, glosa, Math.abs(debe - haber), cuadra).map((error) => (
               <li key={error} className="flex items-start gap-1.5 text-muted-foreground">
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                 {error}

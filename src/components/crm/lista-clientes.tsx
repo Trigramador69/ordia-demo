@@ -113,7 +113,7 @@ export function ListaClientes() {
           <TableHeader>
             <TableRow>
               <TableHead className="pl-4">Cliente</TableHead>
-              <TableHead className="hidden lg:table-cell">Contacto</TableHead>
+              <TableHead className="hidden 2xl:table-cell">Contacto</TableHead>
               {!esVentas && <TableHead className="hidden md:table-cell">Vendedor</TableHead>}
               <TableHead>Estado</TableHead>
               <TableHead className="hidden text-right sm:table-cell">En el embudo</TableHead>
@@ -143,7 +143,7 @@ export function ListaClientes() {
                     {cliente.rubro} · {cliente.ciudad}
                   </p>
                 </TableCell>
-                <TableCell className="hidden lg:table-cell">
+                <TableCell className="hidden 2xl:table-cell">
                   {contacto && (
                     <>
                       <span className="block">{contacto.nombre}</span>

@@ -170,14 +170,26 @@ export function VistaCicloVentas() {
             <CardTitle>Por qué se pierden</CardTitle>
             <CardDescription>{pluralizar(resultados.perdidas, "oportunidad perdida", "oportunidades perdidas")} en el periodo.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-3">
             {motivos.length === 0 ? (
               <p className="text-sm text-muted-foreground">No se perdió ninguna oportunidad en el periodo.</p>
             ) : (
-              <BarrasHorizontales
-                descripcion="Oportunidades perdidas por motivo"
-                filas={motivos.map((item) => ({ clave: item.motivo, etiqueta: item.motivo, valor: item.cantidad, textoValor: String(item.cantidad) }))}
-              />
+              <>
+                <BarrasHorizontales
+                  descripcion="Oportunidades perdidas por motivo"
+                  filas={motivos.map((item) => ({
+                    clave: item.motivo,
+                    etiqueta: item.motivo,
+                    valor: item.cantidad,
+                    textoValor: String(item.cantidad),
+                    detalle: `${Math.round((item.cantidad / resultados.perdidas) * 100)}% de las perdidas`,
+                  }))}
+                />
+                <TablaDelGrafico
+                  encabezados={["Motivo", "Perdidas", "Del total"]}
+                  filas={motivos.map((item) => [item.motivo, item.cantidad, `${Math.round((item.cantidad / resultados.perdidas) * 100)}%`])}
+                />
+              </>
             )}
           </CardContent>
         </Card>

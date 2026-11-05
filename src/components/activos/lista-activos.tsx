@@ -119,7 +119,7 @@ export function ListaActivos() {
               const libro = activo.estado === "baja" ? null : valorEnLibros(activo, hastaMes);
               return (
                 <TableRow key={activo.id} className="cursor-pointer" onClick={() => router.push(enlaceFicha(activo.id))}>
-                  <TableCell className="pl-4">
+                  <TableCell className="pl-4 whitespace-normal">
                     <Link href={enlaceFicha(activo.id)} className="font-medium hover:underline" onClick={(evento) => evento.stopPropagation()}>
                       {activo.nombre}
                     </Link>

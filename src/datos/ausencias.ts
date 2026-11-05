@@ -34,7 +34,8 @@ const vacaciones: VacacionPlaneada[] = [
   // De vacaciones hoy: empieza dos días hábiles antes.
   { persona: 8, inicio: 0, dias: 7, estado: "aprobada", comentario: "Viaje al lago Titicaca" },
   { persona: 9, inicio: -130, dias: 8, estado: "aprobada", comentario: "Vacación anual" },
-  { persona: 9, inicio: 30, dias: 5, estado: "aprobada", comentario: "Fin de año con la familia" },
+  // Programada dentro de los próximos 30 días aunque caiga en fin de semana o feriado.
+  { persona: 9, inicio: 24, dias: 5, estado: "aprobada", comentario: "Fin de año con la familia" },
   { persona: 10, inicio: -70, dias: 4, estado: "aprobada", comentario: "Trámites en Sucre" },
 ];
 
@@ -73,7 +74,9 @@ export function generarAusencias(personas: Persona[], hoy: string): AusenciasGen
     const inicioVigente = sumarAnios(persona.fechaIngreso, Math.max(1, anios - parametrosVacaciones.gestionesAcumulables + 1));
     if (planeada.estado !== "pendiente" && desde < inicioVigente) continue;
 
-    const fechaSolicitud = sumarDias(desde, planeada.estado === "pendiente" ? -16 : -18);
+    // Pedida unas semanas antes; si eso cae en el futuro, hace dos días.
+    const pedidaAntes = sumarDias(desde, planeada.estado === "pendiente" ? -16 : -18);
+    const fechaSolicitud = pedidaAntes < hoy ? pedidaAntes : sumarDias(hoy, -2);
     const resuelta = planeada.estado !== "pendiente";
     solicitudesVacacion.push({
       id: `vac-${String(solicitudesVacacion.length + 1).padStart(3, "0")}`,
@@ -83,7 +86,7 @@ export function generarAusencias(personas: Persona[], hoy: string): AusenciasGen
       diasHabiles: contarDiasHabiles(desde, hasta),
       comentario: planeada.comentario,
       estado: planeada.estado,
-      fechaSolicitud: fechaSolicitud < hoy ? fechaSolicitud : sumarDias(hoy, -2),
+      fechaSolicitud,
       fechaResolucion: resuelta ? sumarDias(fechaSolicitud, 1) : null,
       idResolutor: resuelta ? idGerente : null,
       motivoRechazo: planeada.motivoRechazo ?? null,

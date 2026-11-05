@@ -19,8 +19,9 @@ export function TablaAsiento({ lineas }: { lineas: LineaAsiento[] }) {
       <TableBody>
         {lineas.map((linea, indice) => (
           <TableRow key={`${linea.codigoCuenta}-${indice}`}>
-            <TableCell className={linea.haber > 0 ? "pl-8" : undefined}>
-              <span className="mr-2 font-mono text-xs text-muted-foreground">{linea.codigoCuenta}</span>
+            {/* El nombre de la cuenta puede partirse en dos líneas para que el debe y el haber siempre se vean. */}
+            <TableCell className={linea.haber > 0 ? "pl-8 whitespace-normal" : "whitespace-normal"}>
+              <span className="mr-2 font-mono text-xs whitespace-nowrap text-muted-foreground">{linea.codigoCuenta}</span>
               {buscarCuenta(linea.codigoCuenta)?.nombre}
               {linea.detalle && <span className="block text-xs text-muted-foreground">{linea.detalle}</span>}
             </TableCell>

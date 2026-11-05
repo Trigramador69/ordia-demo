@@ -51,7 +51,7 @@ pnpm pruebas              # compila, levanta la demo y la prueba en Chrome sin i
 pnpm pruebas --sin-build  # prueba la última compilación
 ```
 
-Recorre todas las pantallas (sin errores de consola ni desborde horizontal, también a ancho de celular) y el recorrido de la presentación: registrar un seguimiento, ganar una oportunidad y facturarla, el interruptor de facturación, pedir y aprobar vacaciones, cerrar la planilla y bajar una boleta, registrar la depreciación, revisar que los reportes cuadren, los permisos de cada rol y el reinicio. Usa el Chrome instalado (`puppeteer-core`); si no lo encuentra, se indica con `CHROME_PATH`.
+Recorre todas las pantallas (sin errores de consola ni desborde horizontal, sin tablas más anchas que su tarjeta a 1366 px, también a ancho de celular) y el recorrido de la presentación: registrar un seguimiento, ganar una oportunidad y facturarla, el interruptor de facturación, pedir y aprobar vacaciones, cerrar la planilla y bajar una boleta, registrar la depreciación, revisar que los reportes cuadren, los permisos de cada rol y el reinicio. Usa el Chrome instalado (`puppeteer-core`); si no lo encuentra, se indica con `CHROME_PATH`.
 
 Lo que conviene ver con ojos está en [plan_pruebas_manuales.md](plan_pruebas_manuales.md), y el guion para presentar, en [guion_presentacion.md](guion_presentacion.md).
 

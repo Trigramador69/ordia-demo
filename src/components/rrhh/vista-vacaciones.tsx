@@ -258,7 +258,7 @@ function TablaSaldos() {
               <TableCell className="hidden text-right tabular-nums sm:table-cell">{resumen.tomados}</TableCell>
               <TableCell className="hidden text-right tabular-nums lg:table-cell">{resumen.programados || "-"}</TableCell>
               <TableCell className="text-right font-semibold tabular-nums">{resumen.saldo}</TableCell>
-              <TableCell className="hidden pr-4 text-xs text-muted-foreground xl:table-cell">
+              <TableCell className="hidden pr-4 text-xs whitespace-normal text-muted-foreground xl:table-cell">
                 {resumen.fechaPrimerDerecho
                   ? `Cumple el año el ${formatearFecha(resumen.fechaPrimerDerecho)}: ${diasPorAntiguedad(1)} días`
                   : resumen.proximoTramo

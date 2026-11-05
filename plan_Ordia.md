@@ -226,7 +226,7 @@ Lo que vende es el circuito: **emitir una factura, cerrar la planilla o deprecia
   - **Oportunidades:** unas 40 abiertas, repartidas en el embudo, y un historial de ganadas y perdidas de los últimos 6 meses para que los indicadores muestren algo.
   - **Actividades:** varias por cliente.
   - **Seguimientos:** algunos para hoy, algunos vencidos y algunas oportunidades estancadas que disparen alarmas automáticas.
-- **Facturas:** de los últimos 3 meses, con alguna anulada y algunas por cobrar.
+- **Facturas:** de los últimos 6 meses, los mismos de la historia contable, para que cada mes del estado de resultados tenga sus ingresos. Entre las recientes hay una anulada y reemitida, algunas por cobrar, una vencida y una cobrada en parte.
 - **Activos fijos:** unos 25 (computadoras, muebles, un vehículo, equipos de oficina), cada uno con su responsable y uno dado de baja.
 - **Contabilidad:** los asientos que generan todo lo anterior, más algunos manuales (alquiler, servicios básicos).
 - **Nombres:** realistas de Bolivia, pero inventados. **Nada de datos reales de Alianza.**

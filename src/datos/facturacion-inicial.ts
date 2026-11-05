@@ -1,15 +1,18 @@
 import { asientoDeAnulacion, asientoDeCobro, asientoDeFactura, type BorradorAsiento } from "../lib/contabilidad.ts";
 import { cuentaDelMedio, generarCuf } from "../lib/facturacion.ts";
 import type { Aleatorio } from "./aleatorio.ts";
+import { mesesDeHistoria } from "./contabilidad-inicial.ts";
 import { formatearNombreMesYAnio } from "./meses.ts";
 import { diferenciaEnDias, mesDeFecha, primerDiaDelMes, sumarDias, sumarMesesAMes } from "./fechas.ts";
 import { diaHabilDesde } from "./feriados.ts";
 import type { Cliente, Cobro, Factura, MedioDeCobro, Oportunidad } from "./tipos.ts";
 
-// Facturas de los últimos 3 meses, con sus cobros y asientos: las ventas
-// ganadas en el CRM y las cuotas mensuales de los clientes con contrato. Para la presentación quedan: una factura anulada y
-// reemitida, algunas por cobrar (una ya vencida), una cobrada en parte y la
-// venta ganada más reciente sin facturar, para emitirla en vivo.
+// Facturas de los meses de historia contable, con sus cobros y asientos: las
+// ventas ganadas en el CRM y las cuotas mensuales de los clientes con contrato,
+// para que cada mes del estado de resultados tenga sus ingresos. Entre las
+// ventas de los últimos 3 meses quedan, para la presentación: una factura
+// anulada y reemitida, algunas por cobrar (una ya vencida), una cobrada en
+// parte y la venta ganada más reciente sin facturar, para emitirla en vivo.
 
 const primerNumeroDeFactura = 1201;
 // Una factura se considera vencida si no se cobra en este plazo.
@@ -45,14 +48,19 @@ export function generarFacturacion(
   const borradores: BorradorAsiento[] = [];
   const clientePorId = new Map(datos.clientes.map((cliente) => [cliente.id, cliente]));
   const mesActual = mesDeFecha(hoy);
-  const desde = primerDiaDelMes(sumarMesesAMes(mesActual, -2));
+  const desde = primerDiaDelMes(sumarMesesAMes(mesActual, -mesesDeHistoria));
+  const desdeRecientes = primerDiaDelMes(sumarMesesAMes(mesActual, -2));
 
   // 1. Ventas nuevas: las oportunidades ganadas en el periodo. La más reciente
-  //    queda sin facturar, para emitirla durante la demo.
+  //    queda sin facturar, para emitirla durante la demo. El orden de venta se
+  //    cuenta desde la primera de los últimos 3 meses (las anteriores quedan en
+  //    negativo), para que los casos especiales caigan entre las recientes.
   const ganadas = datos.oportunidades
     .filter((oportunidad) => oportunidad.etapa === "ganada" && oportunidad.fechaCierre && oportunidad.fechaCierre >= desde)
     .sort((a, b) => a.fechaCierre!.localeCompare(b.fechaCierre!) || a.id.localeCompare(b.id));
-  const emisiones: Emision[] = ganadas.slice(0, -1).map((oportunidad, indiceVenta) => {
+  const primeraReciente = ganadas.findIndex((oportunidad) => oportunidad.fechaCierre! >= desdeRecientes);
+  const desfaseDeIndice = primeraReciente === -1 ? ganadas.length : primeraReciente;
+  const emisiones: Emision[] = ganadas.slice(0, -1).map((oportunidad, indice) => {
     const fecha = diaHabilDesde(oportunidad.fechaCierre!);
     return {
       fecha: fecha > hoy ? oportunidad.fechaCierre! : fecha,
@@ -60,7 +68,7 @@ export function generarFacturacion(
       idOportunidad: oportunidad.id,
       descripcion: oportunidad.titulo,
       monto: oportunidad.monto,
-      indiceVenta,
+      indiceVenta: indice - desfaseDeIndice,
     };
   });
 
@@ -70,7 +78,7 @@ export function generarFacturacion(
     clientesConCuotaMensual,
   );
   const cuotas = new Map(conContrato.map((cliente) => [cliente.id, aleatorio.entero(35, 95) * 100]));
-  for (let desfase = 2; desfase >= 0; desfase--) {
+  for (let desfase = mesesDeHistoria; desfase >= 0; desfase--) {
     const mes = sumarMesesAMes(mesActual, -desfase);
     const fecha = diaHabilDesde(`${mes}-05`);
     if (fecha > hoy) continue;
@@ -94,6 +102,14 @@ export function generarFacturacion(
       a.idCliente.localeCompare(b.idCliente),
   );
   const indiceAnulada = 2;
+  const indiceVencida = 1;
+  // La cobrada en parte es la venta más reciente de entre 7 y 30 días: así
+  // nunca está vencida y la única vencida es la que se deja a propósito.
+  const parcial = emisiones.findLast((emision) => {
+    if (emision.indiceVenta === null || emision.indiceVenta < 0 || emision.indiceVenta === indiceVencida || emision.indiceVenta === indiceAnulada) return false;
+    const dias = diferenciaEnDias(emision.fecha, hoy);
+    return dias >= 7 && dias <= diasDeCredito;
+  });
   let numero = primerNumeroDeFactura;
 
   function emitir(emision: Emision, fecha: string, razonSocial: string) {
@@ -125,7 +141,9 @@ export function generarFacturacion(
 
   function cobrar(factura: FacturacionGenerada["facturas"][number], diasMinimos: number, diasMaximos: number, monto: number) {
     const antiguedad = diferenciaEnDias(factura.fecha, hoy);
-    const medio = aleatorio.elegir<MedioDeCobro>(["transferencia", "transferencia", "transferencia", "cheque", "efectivo"]);
+    // En efectivo solo se cobran montos chicos; lo demás, por banco.
+    const elegido = aleatorio.elegir<MedioDeCobro>(["transferencia", "transferencia", "transferencia", "cheque", "efectivo"]);
+    const medio: MedioDeCobro = elegido === "efectivo" && monto > 5000 ? "transferencia" : elegido;
     const fechaCobro = sumarDias(factura.fecha, aleatorio.entero(diasMinimos, Math.max(diasMinimos, Math.min(diasMaximos, antiguedad - 1))));
     const cobro: FacturacionGenerada["cobros"][number] = {
       id: `cob-${String(cobros.length + 1).padStart(3, "0")}`,
@@ -147,6 +165,12 @@ export function generarFacturacion(
     );
   }
 
+  // Algunas cuotas del mes anterior se pagan con atraso, en los primeros días
+  // del mes en curso, para que "Cobrado este mes" no quede en cero al empezar el mes.
+  const inicioDelMes = primerDiaDelMes(mesDeFecha(hoy));
+  const cuotasConAtraso = 3;
+  let cuotasAtrasadas = 0;
+
   for (const emision of emisiones) {
     const cliente = clientePorId.get(emision.idCliente)!;
     let fecha = emision.fecha;
@@ -162,7 +186,7 @@ export function generarFacturacion(
       borradores.push(
         asientoDeAnulacion(borrador, {
           fecha: fechaAnulacion,
-          glosa: `Anulación de la factura N° ${factura.numero} a ${factura.razonSocialCliente}. Motivo: datos de emisión incorrectos`,
+          glosa: `Anulación de la factura N° ${factura.numero} a ${factura.razonSocialCliente}${factura.razonSocialCliente.endsWith(".") ? "" : "."} Motivo: datos de emisión incorrectos`,
         }),
       );
       fecha = fechaAnulacion;
@@ -173,14 +197,23 @@ export function generarFacturacion(
 
     if (emision.indiceVenta === null) {
       // Las cuotas mensuales se pagan en una o dos semanas.
-      if (antiguedad > 12) cobrar(factura, 4, 15, factura.total);
+      if (antiguedad <= 12) continue;
+      const diasHastaElMes = diferenciaEnDias(factura.fecha, inicioDelMes);
+      const delMesAnterior = mesDeFecha(factura.fecha) === sumarMesesAMes(mesDeFecha(hoy), -1);
+      const pagaConAtraso = delMesAnterior && cuotasAtrasadas < cuotasConAtraso && diasHastaElMes > 15 && diasHastaElMes <= antiguedad - 1;
+      if (pagaConAtraso) cuotasAtrasadas += 1;
+      cobrar(factura, pagaConAtraso ? diasHastaElMes : 4, pagaConAtraso ? antiguedad - 1 : 15, factura.total);
       continue;
     }
     // Ventas nuevas: las de hace más de 20 días ya se cobraron, salvo una
-    // vencida y una cobrada en parte; las más recientes siguen por cobrar.
+    // vencida; las más recientes siguen por cobrar, y una está cobrada en parte.
+    if (emision === parcial) {
+      cobrar(factura, 3, 25, Math.round(factura.total / 2));
+      continue;
+    }
     if (antiguedad <= 20) continue;
-    if (emision.indiceVenta === 1 && antiguedad > diasDeCredito) continue;
-    cobrar(factura, 6, 25, emision.indiceVenta === 4 ? Math.round(factura.total / 2) : factura.total);
+    if (emision.indiceVenta === indiceVencida && antiguedad > diasDeCredito) continue;
+    cobrar(factura, 6, 25, factura.total);
   }
 
   return { facturas, cobros, borradores };

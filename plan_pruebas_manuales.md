@@ -79,7 +79,7 @@ Empezar con **Reiniciar demo**.
 | 4.2 | **Solicitar vacaciones** de 5 días hábiles desde la semana próxima | Aviso "Solicitud de 5 días enviada"; aparece "Pendiente" | | |
 | 4.3 | Pedir otra que se superponga con la anterior | "Ya tiene una solicitud en esas fechas" | | |
 | 4.4 | **Retirar** la pendiente y volver a pedirla | Desaparece y vuelve a aparecer | | |
-| 4.5 | Abrir otra pestaña en `/vacaciones` como Gerente (cambiar el rol en esa pestaña) | La solicitud de Viviana ya está; al aprobarla, en la otra pestaña pasa a "Aprobada" sin recargar | | |
+| 4.5 | Abrir una segunda pestaña en `/vacaciones` y cambiar ahí el rol a **Gerente** | El rol se comparte entre pestañas: la primera también pasa a Gerente sin recargar. En la segunda, la solicitud de Viviana ya está; al aprobarla, en la primera (ir a Vacaciones) figura "Aprobada" sin recargar | | |
 
 ---
 

@@ -253,7 +253,7 @@ export function generarCrm(
             oportunidad.id,
             "reunion",
             cambio.fecha,
-            `Revisión de la propuesta con ${contacto.nombre}: ${aleatorio.elegir(["piden ajustar los plazos de entrega", "consultan un descuento por pago anticipado", "quieren pagar en tres cuotas", "piden sumar una visita mensual"])}.`,
+            `Revisión de la propuesta con ${contacto.nombre}: ${aleatorio.elegir(["piden ajustar los plazos de entrega", "consultan un descuento por pago anticipado", "consultan las condiciones de pago", "piden sumar una visita mensual"])}.`,
           );
           break;
         case "ganada":
@@ -392,7 +392,7 @@ export function generarCrm(
         etapa === "propuesta"
           ? `${contacto.nombre} confirmó que está revisando la propuesta con su equipo.`
           : aleatorio.elegir([
-              `Llamada de seguimiento con ${contacto.nombre}. Sigue interesado.`,
+              `Llamada de seguimiento con ${contacto.nombre}. Mantienen el interés.`,
               `${contacto.nombre} pidió más información sobre los plazos.`,
               `Se compartió una referencia de otro cliente del rubro.`,
             ]),
@@ -429,8 +429,23 @@ export function generarCrm(
     });
   });
 
-  const clientesConPerdida = [...inactivos.slice(0, 8), ...prospectos.slice(24, 30), ...activos.slice(30, 32)];
-  clientesConPerdida.slice(0, perdidasUltimosSeisMeses).forEach((cliente) => {
+  // Repartidas entre los vendedores, unas cuatro cada uno, para que la tasa de
+  // cierre por vendedor sea creíble. Los dos activos son fijos: su actividad
+  // reciente cuenta para la alarma de cliente sin contacto.
+  const clientesConPerdida = activos.slice(30, 32);
+  const topePorVendedor = Math.ceil(perdidasUltimosSeisMeses / new Set(clientes.map((cliente) => cliente.idVendedor)).size);
+  const perdidasDe = (idVendedor: string) => clientesConPerdida.filter((cliente) => cliente.idVendedor === idVendedor).length;
+  const candidatos = [...prospectos.slice(24, 30), ...activos.slice(ganadasUltimosSeisMeses, 30), ...inactivos];
+  for (const cliente of candidatos) {
+    if (clientesConPerdida.length === perdidasUltimosSeisMeses) break;
+    if (perdidasDe(cliente.idVendedor) < topePorVendedor) clientesConPerdida.push(cliente);
+  }
+  // Si algún vendedor tiene pocos candidatos, se completa con el resto.
+  for (const cliente of candidatos) {
+    if (clientesConPerdida.length === perdidasUltimosSeisMeses) break;
+    if (!clientesConPerdida.includes(cliente)) clientesConPerdida.push(cliente);
+  }
+  clientesConPerdida.forEach((cliente) => {
     const etapaAlPerder = aleatorio.elegir<EtapaOportunidad>(["contactado", "propuesta", "propuesta", "negociacion"]);
     const cierre = haceDias(aleatorio.entero(4, 180));
     const creacion = sumarDias(cierre, -aleatorio.entero(15, 70));
@@ -463,7 +478,7 @@ export function generarCrm(
   // Prospectos sin oportunidad: un primer contacto reciente.
   for (const cliente of prospectos.slice(30)) {
     const contacto = contactoPrincipal.get(cliente.id)!;
-    agregarActividad(cliente, null, "llamada", haceDias(aleatorio.entero(2, 40)), `Primer contacto con ${contacto.nombre}. Pidió que lo llamen más adelante.`);
+    agregarActividad(cliente, null, "llamada", haceDias(aleatorio.entero(2, 40)), `Primer contacto con ${contacto.nombre}. Pidió volver a hablar más adelante.`);
   }
   // Inactivos: la última conversación, hace tiempo.
   for (const cliente of inactivos) {
@@ -518,13 +533,11 @@ export function generarCrm(
     });
   });
 
-  // --- 6. Fecha de alta coherente: no después de su primera actividad ---
+  // --- 6. Fecha de alta coherente: el día de su primera actividad registrada ---
 
   for (const cliente of clientes) {
-    const primera = actividades
-      .filter((actividad) => actividad.idCliente === cliente.id)
-      .reduce((minima, actividad) => (actividad.fecha < minima ? actividad.fecha : minima), cliente.fechaAlta);
-    cliente.fechaAlta = primera;
+    const fechas = actividades.filter((actividad) => actividad.idCliente === cliente.id).map((actividad) => actividad.fecha);
+    if (fechas.length > 0) cliente.fechaAlta = fechas.reduce((minima, fecha) => (fecha < minima ? fecha : minima));
   }
 
   actividades.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id));

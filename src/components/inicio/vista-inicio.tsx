@@ -248,7 +248,7 @@ export function VistaInicio() {
                 <ListChecks className="size-4 text-muted-foreground" />
                 Pendientes del mes
               </CardTitle>
-              <CardDescription>Lo que falta en recursos humanos, contabilidad y facturación.</CardDescription>
+              <CardDescription>{verFacturas ? "Lo que falta en recursos humanos, contabilidad y facturación." : "Lo que falta en recursos humanos y contabilidad."}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col divide-y">
               {tareas.map((tarea) => (

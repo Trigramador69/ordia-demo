@@ -152,7 +152,7 @@ export function DialogoPermiso({
   if (!fechasValidas) errores.push("Revise las fechas.");
   else if (dias === 0) errores.push("El rango elegido no tiene días hábiles.");
   if (resumen && tipo === "con_goce" && dias > resumen.saldoConGoce) {
-    errores.push(`Supera el cupo con goce de haber (le quedan ${resumen.saldoConGoce}). Regístrelo sin goce o en partes.`);
+    errores.push(`Supera el cupo con goce de haber (${resumen.saldoConGoce === 1 ? "le queda 1 día" : `le quedan ${resumen.saldoConGoce} días`}). Regístrelo sin goce o en partes.`);
   }
 
   function guardar() {

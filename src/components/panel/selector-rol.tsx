@@ -54,7 +54,7 @@ export function SelectorRol() {
             {roles.map((opcion) => {
               const persona = usuarioDelRol(estado, opcion);
               return (
-                <DropdownMenuRadioItem key={opcion} value={opcion}>
+                <DropdownMenuRadioItem key={opcion} value={opcion} closeOnClick>
                   <span className="flex flex-col">
                     <span>
                       {nombresRol[opcion]} · {nombreCompleto(persona)}

@@ -102,7 +102,7 @@ export function VistaCobros() {
                 </TableCell>
                 <TableCell className="hidden text-right tabular-nums sm:table-cell">{formatearImporte(factura.total)}</TableCell>
                 <TableCell className="text-right font-medium tabular-nums">{formatearImporte(saldo)}</TableCell>
-                <TableCell className={cn("text-right tabular-nums", dias > diasDeCredito && "font-medium text-destructive")}>{dias} días</TableCell>
+                <TableCell className={cn("text-right tabular-nums", dias > diasDeCredito && "font-medium text-destructive")}>{pluralizar(dias, "día", "días")}</TableCell>
                 <TableCell className="pr-6 text-right">
                   <Button size="sm" variant="outline" onClick={() => setCobrando(factura)}>
                     <Coins />
